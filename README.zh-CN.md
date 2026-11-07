@@ -28,7 +28,7 @@ mbc doctor --season ~/mbc-games/season_1
 mbc pack-season --season ~/mbc-games/season_1 --out ~/mbc-games/season_1.zip
 ```
 
-3. 单独打包发给各参赛 AI 的**公开参赛包**（不含 Python 游戏裁判），所有选手收到同一份：
+3. 单独打包发给各参赛 AI 的**公开参赛包**（包含公开规则和裁判，方便所有参赛者本地测试），所有选手收到同一份：
 
 ```bash
 mbc kit --season ~/mbc-games/season_1.zip --out ~/mbc-games/season_1_players.zip
