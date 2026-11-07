@@ -44,6 +44,8 @@ class SeasonInfo:
     viewer: Path
     example: Path
     rules: Path
+    interface: Path | None = None
+    ai_prompt: Path | None = None
 
     @property
     def id(self) -> str:
@@ -61,7 +63,14 @@ def resolve_season(value: str | Path) -> SeasonInfo:
     meta = json.loads(manifest.read_text(encoding="utf-8"))
     if not isinstance(meta, dict) or not SAFE_ID.fullmatch(str(meta.get("id", ""))):
         raise SeasonError("Season manifest needs a safe id")
+    # v2 is the evergreen contract for NEW seasons. Old v1 packages remain
+    # playable, so historic tournaments don't break when the spec evolves.
+    format_version = meta.get("format_version", 1)
+    if type(format_version) is not int or format_version not in (1, 2):
+        raise SeasonError("Unsupported season format_version (expected 1 or 2)")
     required = ("judge", "header", "adapter", "viewer", "example", "rules")
+    if format_version >= 2:
+        required += ("interface", "ai_prompt")
     files = {}
     for key in required:
         name = meta.get(key)
@@ -71,6 +80,17 @@ def resolve_season(value: str | Path) -> SeasonInfo:
         if not candidate.is_file():
             raise SeasonError(f"Missing season file {candidate}")
         files[key] = candidate
+    if format_version >= 2:
+        for key, expected in (("interface", "INTERFACE.md"), ("ai_prompt", "AI_PROMPT.md")):
+            if meta[key] != expected:
+                raise SeasonError(f"v2 requires {key}: {expected}")
+            # Documents may be short, but must contain both language sections.
+            document = files[key].read_text(encoding="utf-8")
+            if not document.strip() or "## 中文" not in document or "## English" not in document:
+                raise SeasonError(f"{expected} must have ## 中文 and ## English sections")
+        rules_doc = files["rules"].read_text(encoding="utf-8")
+        if not rules_doc.strip() or "## 中文" not in rules_doc or "## English" not in rules_doc:
+            raise SeasonError("v2 RULES.md must have ## 中文 and ## English sections")
     return SeasonInfo(path, meta, **files)
 
 

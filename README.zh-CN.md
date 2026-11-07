@@ -1,6 +1,6 @@
 # Mini Battlecode · 通用引擎
 
-[English](README.md) · [新赛季交给 AI 的制作规范](docs/SEASON_PROMPT_ZH.md)
+[English](README.md) · [每届必须遵守的双语规范](docs/SEASON_STANDARD.md) · [新赛季设计任务](docs/SEASON_PROMPT_ZH.md) · [统一 AI 选手提示词](docs/AI_PROMPT_TEMPLATE.md)
 
 **此仓库只有引擎，没有任何一届的游戏规则、赛季代码、bot 或战绩。** 每届游戏独立为一个 ZIP；全部历史数据最终通过导入 ZIP 保存在 `icaijy.com` 的数据库里。
 
@@ -20,7 +20,11 @@ mbc doctor
 
 ## 每届完整流程（只需要几个命令）
 
-1. 创建一个**仓库外**的 `~/mbc-games/season_1/`，把 [AI 新赛季制作规范](docs/SEASON_PROMPT_ZH.md) 给负责设计游戏的 AI。它会写 `manifest.json`、`game.py`、`arena.hpp`、`grader.cpp`、`viewer.html`、`RULES.md` 和无策略示例 `example_bot.cpp`。**你只负责写自己的一个 `.cpp` 文件**，不改引擎。
+1. 创建一个**仓库外**的 `~/mbc-games/season_1/`，把 [AI 新赛季制作规范](docs/SEASON_PROMPT_ZH.md) 给负责设计游戏的 AI。它会写 `manifest.json`（`format_version: 2`）、`game.py`、`arena.hpp`、`grader.cpp`、`viewer.html`、无策略示例 `example_bot.cpp`，以及下面的**三份中英双语文档**。- `RULES.md`：两种语言的游戏规则；短、清楚、略搞笑，但不漏影响胜负的细节。
+   - `INTERFACE.md`：两种语言的 C++ 接口速查，包含 `tick()`、状态字段、动作函数、编译测试示例。
+   - `AI_PROMPT.md`：两种语言的统一中立提示词，最好直接复制 [官方模板](docs/AI_PROMPT_TEMPLATE.md)。**同一届发给每个 AI 的原文必须完全相同**，不得针对模型添加策略暗示。
+
+   三份文档都必须有 `## 中文` 和 `## English`。**你只负责写自己的一个 `.cpp` 文件**，不改引擎。
 2. 检查游戏并打包**完整赛事 ZIP**（主办方使用）：
 
 ```bash
@@ -28,7 +32,7 @@ mbc doctor --season ~/mbc-games/season_1
 mbc pack-season --season ~/mbc-games/season_1 --out ~/mbc-games/season_1.zip
 ```
 
-3. 单独打包发给各参赛 AI 的**公开参赛包**（包含公开规则和裁判，方便所有参赛者本地测试），所有选手收到同一份：
+3. 单独打包发给各参赛 AI 的**公开参赛包**（含三份双语文档、公开规则/裁判和示例，方便本地测试）。**所有 AI 拿完全相同的 ZIP 和完全相同的 `AI_PROMPT.md`，人类使用同样公开资料。**
 
 ```bash
 mbc kit --season ~/mbc-games/season_1.zip --out ~/mbc-games/season_1_players.zip
@@ -75,7 +79,7 @@ python manage.py import_battlecode /path/to/database_import.zip
 | 每个 bot | 单独 `.cpp` / `.cc`，仓库外 |
 | 每届最终成绩、规则、源码快照、全部 replay | `icaijy.com` 的 **Django 数据库**，由 `database_import.zip` 导入 |
 
-**技术边界**：新游戏必须有 `game.py`（Python 权威裁判）、`grader.cpp`（通信）、`arena.hpp`（C++ API）、`viewer.html`（可视化）；不是只需一个 grader。参赛者不用写 `main()`。
+**技术边界**：新游戏必须有 `game.py`（Python 权威裁判）、`grader.cpp`（通信）、`arena.hpp`（C++ API）、`viewer.html`（可视化）；不是只需一个 grader。参赛者不用写 `main()`。新版 v2 赛季缺少三份双语文档时 `mbc doctor` 和打包会拒绝通过；旧版 v1 ZIP 继续兼容。
 
 **安全提醒**：游戏插件中的 `game.py` 及所有 C++ bot 都是会在你的电脑上实际运行的代码，**引擎不是安全沙箱**；只运行自己信任的代码或使用隔离容器。网站导入器只读取数据，不执行任何游戏代码。每届 viewer 会被沙箱化，必须支持 `postMessage` 接收 replay 数据。
 
