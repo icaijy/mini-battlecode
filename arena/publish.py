@@ -18,7 +18,7 @@ h2{font-size:22px;margin:30px 0 12px}.sub{color:#9aaac1}
 .card{background:#1c2736;border:1px solid #34445a;border-radius:14px;padding:18px;margin-top:15px}
 table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:9px 8px;border-bottom:1px solid #304055}
 .badge{background:#2c405a;border-radius:8px;padding:3px 8px}small{color:#9aabc2}
-.muted{background:#304969}.muted{color:#9aabc2}footer{margin-top:35px;color:#899aae;font-size:13px}
+.muted{color:#9aabc2}footer{margin-top:35px;color:#899aae;font-size:13px}
 @media(max-width:600px){body{padding:15px 9px}table{font-size:12px}th,td{padding:6px 3px}}
 """
 
