@@ -18,29 +18,36 @@ mbc doctor
 
 The launcher is installed in `~/.local/bin/mbc`. Add this directory to PATH if necessary. Keep the clone in place; update with `git pull`.
 
-## Per-season workflow
+## Per-season workflow — **one ZIP, everyone uses it**
 
-1. Ask a **game-designer AI** to create an external season (never in this engine repo). The new `manifest.json` uses **`format_version: 2`**. Alongside `game.py`, `arena.hpp`, `grader.cpp`, `viewer.html` and `example_bot.cpp`, it **must** contain three short Markdown documents: bilingual `RULES.md` (game rules), `INTERFACE.md` (C++ API quick-start), and `AI_PROMPT.md` (same neutral instructions for every competing AI). Both languages use the headings `## 中文` and `## English` and convey equivalent information. Aim for readable, slightly funny wording—not a dissertation. See [the permanent standard](docs/SEASON_STANDARD.md) and [the game-designer brief](docs/SEASON_PROMPT_EN.md).
-2. Validate and package the organiser-only game:
+**Each game has exactly one `season.zip`**. Send the **same file** to the organiser, every competing AI and the human. It contains all public game files, the Python judge, C++ API, viewer, rules, and neutral AI prompt. There is no organiser/contestant package distinction.
+
+1. Ask a game-designer AI to create an external season directory (never commit game-specific files to the engine repository). New games use `format_version: 2` and ship `game.py`, `arena.hpp`, `grader.cpp`, `viewer.html`, `example_bot.cpp`, plus three **short, bilingual, accessible** docs: `RULES.md`, `INTERFACE.md`, `AI_PROMPT.md`. Include `## 中文` and `## English` in all three. Keep the wording clear and a little funny, but avoid strategy hints. Follow [the season standard](docs/SEASON_STANDARD.md).
+
+2. Validate and **package once**:
 
 ```bash
 mbc doctor --season ~/games/s1
 mbc pack-season --season ~/games/s1 --out ~/games/s1.zip
 ```
 
-3. Generate an identical public contestant ZIP for each participant (including the same publicly inspectable `game.py` judge and all three bilingual docs). **Send every AI the exact same ZIP and `AI_PROMPT.md`, preferably copied verbatim from [the standard template](docs/AI_PROMPT_TEMPLATE.md)**; no model-specific strategy hints:
+3. **Share that exact `s1.zip` with everyone.** Give each AI the identical `AI_PROMPT.md` text (preferably [the standard template](docs/AI_PROMPT_TEMPLATE.md)). For local editing, extract the same ZIP:
 
 ```bash
-mbc kit --season ~/games/s1.zip --out ~/games/s1_players.zip
+mkdir -p ~/games/play
+unzip ~/games/s1.zip -d ~/games/play
 ```
 
-4. Each contestant writes **one** C++17 `.cpp/.cc` bot; the human has 45 minutes, each AI 10 minutes. Freeze all sources before choosing official seeds. Test locally:
+Each participant writes **one** C++17 `.cpp/.cc` bot. Human time limit: 45 minutes; AI time limit: 10 minutes. Everyone has the same public materials and tests. Freeze source files before drawing official tournament seeds.
+
+4. Test using the **same `s1.zip`**:
 
 ```bash
-mbc duel --season ~/games/s1.zip --blue ~/bots/human.cpp --red ~/games/s1/example_bot.cpp --replay ~/games/test.json
+mbc duel --season ~/games/s1.zip --blue ~/bots/human.cpp \
+  --red ~/games/play/example_bot.cpp --replay ~/games/test.json
 ```
 
-5. Official paired round robin (same seeds, swapped sides; **all** replays preserved, manual video selection):
+5. Run official paired round robin (same maps, swapped sides; **all** replays saved, video selection is manual):
 
 ```bash
 mbc finals --season ~/games/s1.zip \
@@ -49,25 +56,27 @@ mbc finals --season ~/games/s1.zip \
   --out ~/games/results/s1
 ```
 
-The engine writes `tournament.json`, `replays/*.json`, `sources/*.cpp` and **`database_import.zip`**. The ZIP contains season sources (including the Python judge), viewer and rules, participant source snapshots, standings and every replay. Import the ZIP on the site server:
+After the finals, the engine produces `database_import.zip`. **This is a results archive generated after the competition, not a second game ZIP**. Transfer it to the separately deployed `icaijy.com` Django server and import:
 
 ```bash
 python manage.py migrate
 python manage.py import_battlecode /path/to/database_import.zip
 ```
 
-The website stores records **in the database** and exposes them at `/battlecode/`. On first deployment, update the separate website repository and reload its Django process. This engine repo never modifies the website.
+The website stores the results, rules, source snapshots and every replay in its database and exposes them at `/battlecode/`. First deployment requires updating the separate website repository and reloading Django; this engine never modifies the website.
+
+**Backward compatibility:** `mbc kit` is retained as an alias for `mbc pack-season` and creates an **identical** ZIP. Use only `pack-season` in normal workflows.
 
 ## Contract
 
 - `--season` accepts an **external directory or ZIP** (ZIP is safely extracted into a temporary directory for each command).
 - `mbc doctor` without `--season` checks the installation. With `--season`, also checks the game plugin.
-- `mbc build`, `duel`, `match`, `tournament`, `finals`, `kit`, `pack-season`, `export` always use `--season`.
+- `mbc build`, `duel`, `match`, `tournament`, `finals`, `pack-season`, `export` always use `--season`; legacy `kit` is a synonym for `pack-season`.
 - Matches run in new native processes, one action line per tick. Invalid output and timeouts forfeit. Winner is determined by the game's Python `game.py` judge.
 - Official standings: each pair plays every seed in both positions. Win 1 point / draw 0.5 / loss 0; ties use score difference then total score. For N bots and S seeds there are N(N−1)S games.
 - Source files are snapshotted during the tournament; hashes, seeds, results and all replay JSONs go into the database import ZIP.
 - The engine does **not** automatically highlight matches or write a static website. The organiser selects video clips manually from the website's complete match archive.
-- New season `format_version: 2` packages require the three bilingual documents and include them in the full ZIP, contestant ZIP and final database ZIP. Legacy v1 packages remain playable.
+- New season `format_version: 2` packages require three bilingual documents; they are in the **single shared season ZIP** and the post-tournament database ZIP. Legacy v1 packages remain playable.
 - This launcher is **not a security sandbox**. Only execute trusted C++ and Python code, or use an isolated VM/container.
 
 ## Tests
