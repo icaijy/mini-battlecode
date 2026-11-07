@@ -65,13 +65,14 @@ def season_package(info: SeasonInfo, out: str | Path) -> Path:
 
 
 def contestant_kit(info: SeasonInfo, out: str | Path) -> Path:
-    """Public API only; participants must not need the private Python judge."""
+    """Identical public contest ZIP, including rules and judge for local testing."""
     output = Path(out).resolve()
     output.parent.mkdir(parents=True, exist_ok=True)
     if output.exists():
         raise FileExistsError(output)
     with zipfile.ZipFile(output, "x", zipfile.ZIP_DEFLATED) as z:
-        for field in ("header", "adapter", "viewer", "example", "rules"):
+        z.write(info.path / "manifest.json", "manifest.json")
+        for field in PLUGIN_FILES:
             src = getattr(info, field)
             z.write(src, src.name)
         z.writestr("HOW_TO_BUILD.txt", "Write ONE .cpp/.cc file; implement tick() in arena.hpp.\n"
