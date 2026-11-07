@@ -67,20 +67,9 @@ def season_package(info: SeasonInfo, out: str | Path) -> Path:
 
 
 def contestant_kit(info: SeasonInfo, out: str | Path) -> Path:
-    """Identical public contest ZIP, including rules and judge for local testing."""
-    output = Path(out).resolve()
-    output.parent.mkdir(parents=True, exist_ok=True)
-    if output.exists():
-        raise FileExistsError(output)
-    with zipfile.ZipFile(output, "x", zipfile.ZIP_DEFLATED) as z:
-        z.write(info.path / "manifest.json", "manifest.json")
-        for field in PLUGIN_FILES:
-            src = getattr(info, field)
-            if src is not None:
-                z.write(src, src.name)
-        z.writestr("HOW_TO_BUILD.txt",
-                   "中文：先读 RULES.md（规则）和 INTERFACE.md（接口），再写一份 .cpp/.cc。\\n"
-                   "English: Read RULES.md and INTERFACE.md, then write ONE .cpp/.cc.\\n"
-                   "Compile: g++ -std=c++17 -O2 bot.cpp grader.cpp -o bot\\n"
-                   "Build/test under the organiser's full season ZIP.\\n")
-    return output
+    """Backward-compatible alias. One public season ZIP for everyone.
+
+    The full season already contains the judge, viewer, bilingual docs and
+    neutral AI prompt. There is no reason for a second contestant variant.
+    """
+    return season_package(info, out)

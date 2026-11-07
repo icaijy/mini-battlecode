@@ -42,6 +42,13 @@ class CLIWorkflow(unittest.TestCase):
                         self.assertIn(name, z.namelist())
                         self.assertIn('## 中文', z.read(name).decode('utf-8'))
                         self.assertIn('## English', z.read(name).decode('utf-8'))
+                # Legacy "kit" command must produce exactly the same public
+                # package: no secret organiser/contestant variants.
+                with zipfile.ZipFile(plugin) as original:
+                    with zipfile.ZipFile(kit) as copy:
+                        self.assertEqual(sorted(original.namelist()), sorted(copy.namelist()))
+                        for filename in original.namelist():
+                            self.assertEqual(original.read(filename), copy.read(filename))
             outfile = root / 'results'
             archive = root / 'database.zip'
             src = folder / 'example_bot.cpp'

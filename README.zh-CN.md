@@ -18,35 +18,43 @@ mbc doctor
 
 `mbc` 安装到 `~/.local/bin`。若提示找不到命令，执行 `export PATH="$HOME/.local/bin:$PATH"`，并加到 `~/.bashrc`。保留克隆的仓库目录，更新用 `git pull`。
 
-## 每届完整流程（只需要几个命令）
+## 每届完整流程：一个 ZIP 搞定
 
-1. 创建一个**仓库外**的 `~/mbc-games/season_1/`，把 [AI 新赛季制作规范](docs/SEASON_PROMPT_ZH.md) 给负责设计游戏的 AI。它会写 `manifest.json`（`format_version: 2`）、`game.py`、`arena.hpp`、`grader.cpp`、`viewer.html`、无策略示例 `example_bot.cpp`，以及下面的**三份中英双语文档**。- `RULES.md`：两种语言的游戏规则；短、清楚、略搞笑，但不漏影响胜负的细节。
-   - `INTERFACE.md`：两种语言的 C++ 接口速查，包含 `tick()`、状态字段、动作函数、编译测试示例。
-   - `AI_PROMPT.md`：两种语言的统一中立提示词，最好直接复制 [官方模板](docs/AI_PROMPT_TEMPLATE.md)。**同一届发给每个 AI 的原文必须完全相同**，不得针对模型添加策略暗示。
+**以后每届只有一个游戏 ZIP，例如 `season_1.zip`。** 这份 ZIP 同时给主办方、你本人和所有参赛 AI；不再创建第二份「选手包」。人人看到相同的公开规则、接口和裁判代码。
 
-   三份文档都必须有 `## 中文` 和 `## English`。**你只负责写自己的一个 `.cpp` 文件**，不改引擎。
-2. 检查游戏并打包**完整赛事 ZIP**（主办方使用）：
+1. 让负责设计游戏的 AI 在仓库**外**创建 `~/mbc-games/season_1/`，包含 `manifest.json`（`format_version: 2`）、`game.py`、`arena.hpp`、`grader.cpp`、`viewer.html`、`example_bot.cpp`。另外必须有三份简明、略搞笑、内容准确的**中英双语**文档：
+   - `RULES.md`：游戏规则，别写论文。
+   - `INTERFACE.md`：C++ 状态和动作 API，给我速查。
+   - `AI_PROMPT.md`：所有 AI 使用**同一份原文**的中立比赛指令，建议复制 [统一模板](docs/AI_PROMPT_TEMPLATE.md)。
+
+   文档都包含 `## 中文`、`## English`，不能有策略剧透。详细要求见 [赛季规范](docs/SEASON_STANDARD.md)。
+
+2. 检查游戏，然后**只打一次包**：
 
 ```bash
 mbc doctor --season ~/mbc-games/season_1
 mbc pack-season --season ~/mbc-games/season_1 --out ~/mbc-games/season_1.zip
 ```
 
-3. 单独打包发给各参赛 AI 的**公开参赛包**（含三份双语文档、公开规则/裁判和示例，方便本地测试）。**所有 AI 拿完全相同的 ZIP 和完全相同的 `AI_PROMPT.md`，人类使用同样公开资料。**
+3. **把同一个 `season_1.zip` 发给每个 AI，也给自己用。** 每个 AI 收到相同的 `AI_PROMPT.md`。你可以解压它读取规则和示例，不需要额外的 kit：
 
 ```bash
-mbc kit --season ~/mbc-games/season_1.zip --out ~/mbc-games/season_1_players.zip
+mkdir -p ~/mbc-games/play
+unzip ~/mbc-games/season_1.zip -d ~/mbc-games/play
 ```
 
-4. 所有 bot 开始编写。人类限时 45 分钟、AI 各 10 分钟；每人仅交 `.cpp` 或 `.cc`，策略代码冻结后再生成比赛随机种子。测试自己的 bot：
+   参赛者只写**一份 C++17 `.cpp` / `.cc`**；人类 45 分钟、AI 各 10 分钟。只准使用同一份公开资料，不查看其他参赛 bot。到时冻结源码，之后才生成决赛随机种子。
+
+4. 你自己测试 bot 时，还是使用**同一份 ZIP**：
 
 ```bash
 mbc duel --season ~/mbc-games/season_1.zip \
-  --blue ~/mbc-games/bots/human.cpp --red ~/mbc-games/season_1/example_bot.cpp \
+  --blue ~/mbc-games/bots/human.cpp \
+  --red ~/mbc-games/play/example_bot.cpp \
   --seed 7 --replay ~/mbc-games/test.json
 ```
 
-5. 正式大决战，双边循环赛，**所有对局回放都保存**；没有自动选精彩对局：
+5. 正式决赛：同一 ZIP 加上每人的单文件 bot。系统做双边循环赛，保存**所有 replay**，不自动挑精彩对局：
 
 ```bash
 mbc finals --season ~/mbc-games/season_1.zip \
@@ -58,16 +66,18 @@ mbc finals --season ~/mbc-games/season_1.zip \
   --out ~/mbc-games/results/season_1
 ```
 
-输出：`~/mbc-games/results/season_1/tournament.json`、`replays/`、`sources/` 和 **`database_import.zip`**。
+   **赛后**才生成 `database_import.zip`，这是存档用的数据文件，**不是第二份游戏 ZIP**。
 
-6. 把结果 ZIP 上传到自己的网站服务器（比如 SCP），在 `icaijy.com` 项目目录执行：
+6. 把 `database_import.zip` 传到网站服务器，在完成部署和迁移的 `icaijy.com` 项目目录运行：
 
 ```bash
 python manage.py migrate
 python manage.py import_battlecode /path/to/database_import.zip
 ```
 
-以后在 **`https://icaijy.com/battlecode/`** 浏览历届赛季、排行榜和全部回放。首次网站部署仍需要拉取网站仓库、迁移数据库、重新加载 Django；GitHub 提交不会自行部署线上网站。
+   成绩、规则、选手源码和全部 replay 最终由网站数据库保存，在 `https://icaijy.com/battlecode/` 查看。注意第一次上线仍需要部署 Django 新代码，GitHub 更新本身不会自动部署。
+
+**兼容提醒：** `mbc kit` 旧命令暂时保留，但它现在和 `mbc pack-season` 输出**相同的游戏包**。正常使用只需要 `pack-season`，别再生成两份。
 
 ## 文件放哪里？
 
@@ -75,7 +85,7 @@ python manage.py import_battlecode /path/to/database_import.zip
 |---|---|
 | 编译、通讯、赛制、结果导出代码 | **本引擎仓库**，永不放赛季代码 |
 | 每届独立的完整游戏包 | 你本地保存的 `season_1.zip` 等（仓库外） |
-| 给人类、AI 的参赛包 | 你本地保存的 `season_1_players.zip` |
+| 所有人使用的参赛包 | **就是上面同一份** `season_1.zip`，无需第二个文件 |
 | 每个 bot | 单独 `.cpp` / `.cc`，仓库外 |
 | 每届最终成绩、规则、源码快照、全部 replay | `icaijy.com` 的 **Django 数据库**，由 `database_import.zip` 导入 |
 
