@@ -70,8 +70,8 @@ def _duel(args):
 
 def _finals(args):
     season = resolve_season(args.season)
-    if args.timeout <= 0 or args.features < 0:
-        raise ValueError("Timeout must be positive and featured count non-negative")
+    if args.timeout <= 0:
+        raise ValueError("Timeout must be positive")
     if bool(args.roster) == bool(args.bot):
         raise ValueError("Provide exactly one of --roster or at least two --bot id=path options")
     if args.roster and (args.seed_count is not None or args.seed_master is not None or args.human):
@@ -108,8 +108,7 @@ def _finals(args):
                 roster["seed_master"] = args.seed_master
             roster_path = Path(tmp) / "roster.json"
             roster_path.write_text(json.dumps(roster), encoding="utf-8")
-        report = run_tournament(season, roster_path, out, timeout=args.timeout,
-                                features=args.features)
+        report = run_tournament(season, roster_path, out, timeout=args.timeout)
     if not args.no_publish:
         site = publish(season, out / "tournament.json", site_root / season.id)
         publish_hub(site_root)
@@ -149,7 +148,6 @@ def main(argv=None):
     t.add_argument("--roster", required=True)
     t.add_argument("--out", required=True)
     t.add_argument("--timeout", type=float, default=0.5)
-    t.add_argument("--features", type=int, default=8)
     f = sp.add_parser("finals", help="one-command tournament, ranking, replays and static website")
     f.add_argument("--season", required=True)
     f.add_argument("--bot", action="append", metavar="ID=FILE", help="repeat for each .cpp/.cc bot")
@@ -160,9 +158,8 @@ def main(argv=None):
     f.add_argument("--out", help="tournament output folder (defaults to timestamped results)")
     f.add_argument("--site-root", default="published")
     f.add_argument("--timeout", type=float, default=0.5)
-    f.add_argument("--features", type=int, default=8)
     f.add_argument("--no-publish", action="store_true")
-    p = sp.add_parser("publish", help="export static results + featured replays")
+    p = sp.add_parser("publish", help="export static results and all replays")
     p.add_argument("--season", required=True)
     p.add_argument("--results", required=True)
     p.add_argument("--out", required=True)
@@ -197,8 +194,7 @@ def main(argv=None):
             elif args.command == "tournament":
                 if args.timeout <= 0:
                     raise ValueError("--timeout must be positive")
-                run_tournament(season, args.roster, args.out, timeout=args.timeout,
-                               features=max(args.features, 0))
+                run_tournament(season, args.roster, args.out, timeout=args.timeout)
             elif args.command == "publish":
                 print("Published:", publish(season, args.results, args.out))
             elif args.command == "kit":
