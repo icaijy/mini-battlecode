@@ -1,26 +1,21 @@
-# Mini Battlecode：交给 AI 的新赛季制作任务（直接复制）
+# Mini Battlecode · 给「游戏设计 AI」的任务 / Game designer prompt
 
-请为通用 Mini Battlecode 引擎创作**一个独立赛季插件**。不要修改 `mini-battlecode/arena/`，不要把任何赛季代码提交到引擎仓库。所有文件输出到我指定的外部目录，例如 `~/mbc-games/s2/`，完成后由我执行 `mbc pack-season` 生成可复用 ZIP。
+> 本文件是设计新游戏用的。参赛 AI 收到的是每届自己独立的 `AI_PROMPT.md`，别搞混。
 
-交付 7 个文件：`manifest.json`、`game.py`、`arena.hpp`、`grader.cpp`、`viewer.html`、`RULES.md`（中英双语）与 `example_bot.cpp`（只演示 API，不包含有效竞赛策略）。
+请为通用 Mini Battlecode 引擎创建**一届全新的游戏**。遵守 [每届规范 / Season standard](SEASON_STANDARD.md)。**不修改 `arena/`，不把游戏代码提交到引擎仓库**。全部文件输出在我指定的外部目录。
 
-`manifest.json` 必须包含 `id`, `title`, `version`, `judge:"game.py"`, `header:"arena.hpp"`, `adapter:"grader.cpp"`, `viewer:"viewer.html"`, `example:"example_bot.cpp"`, `rules:"RULES.md"`, `default_seeds`。
+交付以下全部文件：
 
-Python `game.py` 提供 `create_game(seed)`，返回具备 `max_turns`, `turn`, `observe(team)`, `parse_action(team, line)`, `step([action0,action1])`, `snapshot()`, `outcome()` 的实例。`observe` 产生一行带 `\n` 的 UTF-8 文本；`parse_action` 验证并拒绝非法行动；`snapshot` 产生 JSON 可序列化的字典；`outcome()` 产生 `{ "scores": [x,y], "winner": 0|1|null }`。同 seed 可复现，双方同时下指令后结算，且应尽可能公平对称。
+- `manifest.json`，包含 `id`、`title`、`version`、`default_seeds`、`format_version: 2`，以及文件字段 `judge:"game.py"`、`header:"arena.hpp"`、`adapter:"grader.cpp"`、`viewer:"viewer.html"`、`example:"example_bot.cpp"`、`rules:"RULES.md"`、`interface:"INTERFACE.md"`、`ai_prompt:"AI_PROMPT.md"`。
+- `game.py`：Python 权威裁判。提供 `create_game(seed)`，返回具备 `max_turns`、`turn`、`observe(team)`、`parse_action(team,line)`、`step([a,b])`、`snapshot()`、`outcome()` 的对象。输入输出每回合各一行 UTF-8（以 `\n` 结尾），非法行动抛 `ValueError`；快照可 JSON 序列化，结局为 `{"scores":[x,y],"winner":0|1|null}`。相同 seed 确定性重现；双方同时行动并尽量公平对称。
+- `arena.hpp`：C++17 状态、行动 API 与 `tick()` 声明，选手仅需写一份 `.cpp/.cc`。
+- `grader.cpp`：解析一行观察，调用 `tick()`，向 stdout 输出一行行动，读到 `END` 退出。不要在 grader 偷偷算分；调试写 stderr。
+- `viewer.html`：自包含 CSS/JS、无 CDN/HTTP fetch，支持本地 replay JSON 文件选择和播放/定位；在网站受限 iframe 中监听 `postMessage`：`{type:"mini-battlecode-replay",replay:{game,version,result,frames}}` 并播放。
+- `example_bot.cpp`：只演示合法接口，**不能给出有竞争力的策略**。
+- `RULES.md`：**中文 + English**，简短易懂。写清目的、回合、合法行动、胜负、边界；尽量一两屏读完，可以小幽默，不能遗漏影响比赛结果的规则。
+- `INTERFACE.md`：**中文 + English**，只写需要的 API、`tick()`、重要结构体字段、动作、最小编译/测试示例；不要把游戏接口说明写成论文。
+- `AI_PROMPT.md`：**中文 + English**，**所有参赛 AI 直接使用的统一中立提示词**。说明交一份 C++17 代码、限时 10 分钟（人类 45 分钟）、同一份参赛包及本地测试、截止冻结、不可参考其他 bot；**不能添加任何策略建议、模型专属说明或作弊暗示**。不替任何具体模型调教提示词。三份文档每个都要包含 `## 中文` 与 `## English`，两版信息一致。
 
-C++17 的 `arena.hpp` 只暴露可供编写一个 `.cpp` / `.cc` bot 的 `tick()`、状态和行动函数。`grader.cpp` 负责每 tick 从 stdin 读入一行 observation、调用 `tick()`、往 stdout 输出一行 action，收到 `END` 退出。选手不写 `main()`。
+游戏应满足 **10 分钟 AI / 45 分钟人类**能够实现基础 bot，但又有一些真正的 heuristic 空间；不要默认玩家懂复杂算法。所有规则必须确定、可测试，文档语气轻松一点，但严谨优先。
 
-**可视化协议（强制）**：网站会把 `viewer.html` 放到受限沙箱 iframe，不能用 fetch 读取服务器上的回放。Viewer 应监听：
-
-```javascript
-window.addEventListener('message', (event) => {
-  if (event.data?.type === 'mini-battlecode-replay') {
-    const replay = event.data.replay; // {game, version, result, frames}
-    loadReplay(replay);               // 自行实现绘制、进度条和播放
-  }
-});
-```
-
-也应能通过本地文件选择器直接加载 `.json`，方便离线审查比赛。所有 CSS/JS 写在该 HTML 内，不依赖外部网络 CDN。
-
-设计规则要少而有策略深度，适合人类 45 分钟和 AI 10 分钟写 bot。必要时增加插件自己的测试；不要包含现成的高级 bot 策略或正式比赛 seeds。使用 `mbc doctor --season /path/to/game.zip` 和 `mbc duel` 验证。游戏包与参赛包由主办方打包，结果导入 `icaijy.com` 数据库。
+执行 `mbc doctor --season <目录或ZIP>`、一次 `mbc duel` 并用 `mbc pack-season`、`mbc kit` 检查三份双语文档包含在 ZIP 中。**比赛开始前冻结规则和接口；正式 seeds 在所有人交卷后才生成。**
