@@ -8,7 +8,7 @@ from pathlib import Path
 
 from .core import SeasonInfo, sha256
 
-PLUGIN_FILES = ("judge", "header", "adapter", "viewer", "example", "rules")
+PLUGIN_FILES = ("judge", "header", "adapter", "viewer", "example", "rules", "interface", "ai_prompt")
 
 
 def export_archive(info: SeasonInfo, report_path: str | Path,
@@ -29,7 +29,8 @@ def export_archive(info: SeasonInfo, report_path: str | Path,
         z.write(info.path / "manifest.json", "season/manifest.json")
         for field in PLUGIN_FILES:
             src = getattr(info, field)
-            z.write(src, "season/" + src.name)
+            if src is not None:
+                z.write(src, "season/" + src.name)
         seen = set()
         for match in matches:
             ix = match.get("index")
@@ -60,7 +61,8 @@ def season_package(info: SeasonInfo, out: str | Path) -> Path:
         z.write(info.path / "manifest.json", "manifest.json")
         for field in PLUGIN_FILES:
             src = getattr(info, field)
-            z.write(src, src.name)
+            if src is not None:
+                z.write(src, src.name)
     return output
 
 
@@ -74,8 +76,11 @@ def contestant_kit(info: SeasonInfo, out: str | Path) -> Path:
         z.write(info.path / "manifest.json", "manifest.json")
         for field in PLUGIN_FILES:
             src = getattr(info, field)
-            z.write(src, src.name)
-        z.writestr("HOW_TO_BUILD.txt", "Write ONE .cpp/.cc file; implement tick() in arena.hpp.\n"
-                   "Compile: g++ -std=c++17 -O2 bot.cpp grader.cpp -o bot\n"
-                   "Build/test under the organiser's full season ZIP.\n")
+            if src is not None:
+                z.write(src, src.name)
+        z.writestr("HOW_TO_BUILD.txt",
+                   "中文：先读 RULES.md（规则）和 INTERFACE.md（接口），再写一份 .cpp/.cc。\\n"
+                   "English: Read RULES.md and INTERFACE.md, then write ONE .cpp/.cc.\\n"
+                   "Compile: g++ -std=c++17 -O2 bot.cpp grader.cpp -o bot\\n"
+                   "Build/test under the organiser's full season ZIP.\\n")
     return output
