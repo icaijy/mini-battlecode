@@ -4,7 +4,7 @@
 
 目的很简单：**Linux / WSL 安装一次，以后每届只换游戏插件和可视化，选手各交一份 `.cpp` / `.cc`，一条命令打完决赛。**
 
-本仓库和 `icaijy.com` **完全独立**。网站只接收静态战绩页面与精选回放，不运行裁判，也不存你日常训练网站的代码。
+本仓库和 `icaijy.com` **完全独立**。网站只接收静态战绩页面和回放，不运行裁判，也不存你日常训练网站的代码。
 
 ## 1. 安装：以后就用 `mbc` 命令
 
@@ -57,7 +57,7 @@ mbc finals --season courier_s1 \
   --human human --seed-count 8
 ```
 
-所有 bot 都只是一份 C++ 文件，不需要写额外的配置。引擎自动：编译 → 新生成比赛随机种子 → 每两人相互打、交换蓝红双方 → 保存全部 replay → 排名 → 挑精彩对局 → 生成可公开展示的静态网页。
+所有 bot 都只是一份 C++ 文件，不需要写额外的配置。引擎自动：编译 → 新生成比赛随机种子 → 每两人相互打、交换蓝红双方 → 保存全部 replay → 排名 → 生成可公开展示的静态网页。**程序不自动选择精彩对局，录视频时你自己挑。**
 
 网页在 `published/index.html` 和 `published/courier_s1/index.html`。用下面命令在浏览器打开：
 
@@ -67,7 +67,7 @@ python3 -m http.server 8000 --directory published
 
 打开 `http://localhost:8000`。想指定更多参数可以看 `mbc finals --help`。也可以通过 `--roster bots/roster.example.json` 让 JSON 配置所有选手；和 `--bot` 二选一。
 
-**冠军只由完整双边循环赛决定，不让剪辑或一轮随机淘汰决定冠军。** `n` 个选手、每对 `s` 个种子，一共 `n(n−1)s` 场；例如 5 个 bot、6 个 seed = 120 场。视频只剪精选回放，数据和全量 replay 仍保留。
+**冠军只由完整双边循环赛决定，不让剪辑或一轮随机淘汰决定冠军。** `n` 个选手、每对 `s` 个种子，一共 `n(n−1)s` 场；例如 5 个 bot、6 个 seed = 120 场。视频内容由你自己挑回放，全部 replay 和比赛数据都会保留。
 
 ### (3) 给人类和各 AI 发完全相同的参赛包
 
@@ -107,7 +107,7 @@ mbc new-season season_2
 - `published/<赛季>/matches.json`：全部对局结果。
 - `published/<赛季>/results.json`：正式排名、种子等元数据。
 - `published/<赛季>/viewer.html`：专属回放播放器。
-- `published/<赛季>/replays/`：自动选的精彩对局。
+- `published/<赛季>/replays/`：**全部对局的回放**，网站的「All matches & replays」表格可以逐场打开，你自己挑要剪进视频的对局。
 
 这些**静态文件**以后可以复制到 `icaijy.com` 的一个目录或单独部署 GitHub Pages；不需要在个人网站安装 Python 引擎和编译器。目前不会自动修改网站部署。
 
