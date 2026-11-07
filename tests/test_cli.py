@@ -70,6 +70,48 @@ class CLIWorkflow(unittest.TestCase):
                 self.assertEqual(len([n for n in names if n.startswith('replays/')]), 4)
                 self.assertEqual(json.loads(z.read('tournament.json'))['season'], 'synthetic_test')
 
+    def test_finals_discovers_every_cpp_cc_and_reports_wins(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            season = make_fixture(root)
+            bots = root / 'all_bots'
+            bots.mkdir()
+            example = (season / 'example_bot.cpp').read_text(encoding='utf-8')
+            (bots / 'Human.cpp').write_text(example, encoding='utf-8')
+            (bots / 'GPT.cc').write_text(example, encoding='utf-8')
+            (bots / 'README.txt').write_text('not a bot', encoding='utf-8')
+            out = root / 'results'
+            with contextlib.redirect_stdout(io.StringIO()) as capture:
+                cli.main(['finals', '--season', str(season),
+                          '--bots-dir', str(bots), '--seed-count', '1',
+                          '--out', str(out)])
+            stdout = capture.getvalue()
+            self.assertIn('Human.cpp', stdout)
+            self.assertIn('GPT.cc', stdout)
+            self.assertIn('Wins  Draws  Losses', stdout)
+            self.assertNotIn('README.txt', stdout)
+            self.assertNotIn('[1/2]', stdout)  # no per-match spam
+            report = json.loads((out / 'tournament.json').read_text())
+            self.assertEqual(report['matches_total'], 2)
+            self.assertEqual({b['label'] for b in report['leaderboard']},
+                             {'Human.cpp', 'GPT.cc'})
+            self.assertTrue(all(b['wins'] == 0 and b['draws'] == 2
+                                for b in report['leaderboard']))
+            self.assertTrue((out / 'database_import.zip').is_file())
+            self.assertNotIn('featured', report)
+
+    def test_finals_folder_requires_two_cpp_files(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            season = make_fixture(root)
+            bots = root / 'bots'
+            bots.mkdir()
+            (bots / 'readme.txt').write_text('not a bot', encoding='utf-8')
+            with self.assertRaises(SystemExit):
+                with contextlib.redirect_stderr(io.StringIO()):
+                    cli.main(['finals', '--season', str(season),
+                              '--bots-dir', str(bots), '--out', str(root / 'out')])
+
     def test_v2_rejects_missing_document_or_language(self):
         with tempfile.TemporaryDirectory() as d:
             folder = make_fixture(Path(d))
