@@ -87,19 +87,24 @@ void courier::tick(const State&) { volatile int counter=0; while(true) ++counter
             "bots": [{"id": "human", "source": "one.cpp", "kind": "human"},
                      {"id": "alpha", "source": "two.cc", "kind": "ai"}]}))
         out = self.root / "tournament"
-        report = run_tournament(self.info, roster, out, features=3, verbose=False)
+        report = run_tournament(self.info, roster, out, verbose=False)
         self.assertEqual(len(report["matches"]), 4)  # 2 seeds × both sides
         self.assertEqual(len(report["leaderboard"]), 2)
         self.assertTrue(all(s["games"] == 4 for s in report["leaderboard"]))
         self.assertTrue(all(s["match_points"] == 2 for s in report["leaderboard"]))
-        self.assertGreater(len(report["featured"]), 0)
+        self.assertNotIn("featured", report)
         dest = self.root / "published"
         publish(self.info, out / "tournament.json", dest)
         self.assertTrue((dest / "index.html").is_file())
         self.assertTrue((dest / "viewer.html").is_file())
         self.assertTrue((dest / "results.json").is_file())
         self.assertEqual(len(json.loads((dest / "matches.json").read_text())), 4)
-        self.assertTrue(list((dest / "replays").glob("*.json")))
+        self.assertEqual(len(list((dest / "replays").glob("*.json"))), 4)
+        self.assertEqual(len(json.loads((dest / "matches.json").read_text())), 4)
+        html = (dest / "index.html").read_text()
+        self.assertIn("All matches", html)
+        self.assertIn("viewer.html?replay=replays/match_0000.json", html)
+        self.assertNotIn("Featured matches", html)
         publish_hub(self.root)
         hub = json.loads((self.root / "seasons.json").read_text())
         self.assertTrue(any(s["season"] == "published" for s in hub["seasons"]))
