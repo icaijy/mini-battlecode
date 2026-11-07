@@ -33,7 +33,8 @@ class CLIWorkflow(unittest.TestCase):
                 contestant_kit(info, kit)
                 with zipfile.ZipFile(kit) as z:
                     self.assertIn('arena.hpp', z.namelist())
-                    self.assertNotIn('game.py', z.namelist())
+                    self.assertIn('game.py', z.namelist())
+                    self.assertIn('manifest.json', z.namelist())
             outfile = root / 'results'
             archive = root / 'database.zip'
             src = folder / 'example_bot.cpp'
