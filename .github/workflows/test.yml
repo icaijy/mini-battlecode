@@ -22,4 +22,4 @@ jobs:
           cd /tmp
           "$HOME/.local/bin/mbc" doctor --season courier_s1
       - name: Verify contestant kit
-        run: "$HOME/.local/bin/mbc" kit --season courier_s1 --out /tmp/courier_s1.zip
+        run: $HOME/.local/bin/mbc kit --season courier_s1 --out /tmp/courier_s1.zip
