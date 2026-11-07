@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from .core import SAFE_ID, compile_cpp, create_game, open_season, run_match
-from .archive import contestant_kit, export_archive, season_package
+from .archive import export_archive, season_package
 from .tournament import run_tournament
 
 
@@ -84,7 +84,7 @@ def main(argv=None):
         ('match', 'run two pre-compiled executables'),
         ('finals', 'paired round robin and DB import ZIP'),
         ('tournament', 'run a roster file tournament'),
-        ('kit', 'produce public contestant kit ZIP'),
+        ('kit', 'legacy alias for pack-season; creates identical ZIP'),
         ('pack-season', 'produce full independent game ZIP'),
         ('export', 'export a completed tournament to DB ZIP'),
     ):
@@ -146,10 +146,8 @@ def main(argv=None):
                 finals(info, args)
             elif args.command == 'tournament':
                 run_tournament(info, args.roster, args.out, timeout=args.timeout)
-            elif args.command == 'kit':
-                print('Contestant ZIP:', contestant_kit(info, args.out))
-            elif args.command == 'pack-season':
-                print('Full game ZIP:', season_package(info, args.out))
+            elif args.command in ('kit', 'pack-season'):
+                print('Season ZIP:', season_package(info, args.out))
             elif args.command == 'export':
                 print('Database import ZIP:', export_archive(info, args.results, args.out))
     except (ValueError, FileNotFoundError, FileExistsError, RuntimeError) as exc:
