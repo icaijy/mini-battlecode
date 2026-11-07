@@ -47,14 +47,25 @@ mbc duel --season ~/games/s1.zip --blue ~/bots/human.cpp \
   --red ~/games/play/example_bot.cpp --replay ~/games/test.json
 ```
 
-5. Run official paired round robin (same maps, swapped sides; **all** replays saved, video selection is manual):
+5. **Run the finals (recommended):** put every participant's single `.cpp` or `.cc` file directly inside one folder:
+
+```text
+bots/
+  human.cpp
+  gpt.cpp
+  claude.cpp
+  gemini.cc
+```
+
+Run one command from any directory:
 
 ```bash
-mbc finals --season ~/games/s1.zip \
-  --bot human=~/bots/human.cpp --bot gpt=~/bots/gpt.cpp \
-  --bot claude=~/bots/claude.cpp --human human --seed-count 8 \
-  --out ~/games/results/s1
+mbc finals --season ~/games/s1.zip --bots-dir ~/games/bots
 ```
+
+The engine finds **every `.cpp/.cc` in that folder (non-recursive)**, compiles all of them, runs every pair on seeded maps with swapped sides, and prints a **compact wins/draws/losses table keyed by filename**. Full match details and every replay are still archived; there is no automatic video selection. Do not place the example/test bot in this folder unless you want it to compete. Optionally pass `--seed-count 8` to override the season's default number of seeds, or `--out ~/games/results/s1` to specify a result directory.
+
+Legacy explicit `--bot id=path` and `--roster file.json` alternatives remain supported.
 
 After the finals, the engine produces `database_import.zip`. **This is a results archive generated after the competition, not a second game ZIP**. Transfer it to the separately deployed `icaijy.com` Django server and import:
 
