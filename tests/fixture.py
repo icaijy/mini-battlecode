@@ -67,13 +67,16 @@ def make_fixture(root: Path):
     folder.mkdir(exist_ok=True)
     files = {'game.py': GAME, 'arena.hpp': HEADER, 'grader.cpp': ADAPTER,
              'example_bot.cpp': BOT, 'viewer.html': VIEWER,
-             'RULES.md': '# Synthetic test\n\n仅用于内部测试。'}
+             'RULES.md': '## 中文\n测试规则：每回合得分。\n\n## English\nTest rules: score each round.\n',
+             'INTERFACE.md': '## 中文\n实现 tick()。\n\n## English\nImplement tick().\n',
+             'AI_PROMPT.md': '## 中文\n每个 AI 限时10分钟，只写一份 C++17 bot。\n\n## English\nEach AI gets 10 minutes to write one C++17 bot.\n'}
     for name, content in files.items():
         (folder / name).write_text(content, encoding='utf-8')
     (folder / 'manifest.json').write_text(json.dumps({
-        'id':'synthetic_test', 'title':'Synthetic Test', 'version':'1.0',
+        'id':'synthetic_test', 'title':'Synthetic Test', 'version':'1.0', 'format_version':2,
         'judge':'game.py', 'header':'arena.hpp', 'adapter':'grader.cpp',
         'example':'example_bot.cpp', 'viewer':'viewer.html',
-        'rules':'RULES.md', 'default_seeds':2
+        'rules':'RULES.md', 'interface':'INTERFACE.md', 'ai_prompt':'AI_PROMPT.md',
+        'default_seeds':2
     }), encoding='utf-8')
     return folder
