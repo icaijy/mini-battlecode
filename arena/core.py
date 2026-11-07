@@ -84,13 +84,12 @@ def resolve_season(value: str | Path) -> SeasonInfo:
         for key, expected in (("interface", "INTERFACE.md"), ("ai_prompt", "AI_PROMPT.md")):
             if meta[key] != expected:
                 raise SeasonError(f"v2 requires {key}: {expected}")
-            # Documents may be short, but must contain both language sections.
-            document = files[key].read_text(encoding="utf-8")
-            if not document.strip() or "## 中文" not in document or "## English" not in document:
-                raise SeasonError(f"{expected} must have ## 中文 and ## English sections")
-        rules_doc = files["rules"].read_text(encoding="utf-8")
-        if not rules_doc.strip() or "## 中文" not in rules_doc or "## English" not in rules_doc:
-            raise SeasonError("v2 RULES.md must have ## 中文 and ## English sections")
+        # Validate deliverables, not editorial structure. Bilingual content is
+        # an authoring requirement; exact Markdown headings do not affect play
+        # and cannot establish that two translations are complete or equivalent.
+        for key in ("rules", "interface", "ai_prompt"):
+            if not files[key].read_text(encoding="utf-8").strip():
+                raise SeasonError(f"{files[key].name} must not be empty")
     return SeasonInfo(path, meta, **files)
 
 

@@ -97,7 +97,7 @@ python manage.py import_battlecode /path/to/database_import.zip
 | 每个 bot | 单独 `.cpp` / `.cc`，仓库外 |
 | 每届最终成绩、规则、源码快照、全部 replay | `icaijy.com` 的 **Django 数据库**，由 `database_import.zip` 导入 |
 
-**技术边界**：新游戏必须有 `game.py`（Python 权威裁判）、`grader.cpp`（通信）、`arena.hpp`（C++ API）、`viewer.html`（可视化）；不是只需一个 grader。参赛者不用写 `main()`。新版 v2 赛季缺少三份双语文档时 `mbc doctor` 和打包会拒绝通过；旧版 v1 ZIP 继续兼容。
+**技术边界**：新游戏必须有 `game.py`（Python 权威裁判）、`grader.cpp`（通信）、`arena.hpp`（C++ API）、`viewer.html`（可视化）；不是只需一个 grader。参赛者不用写 `main()`。新版 v2 赛季缺少必需文档或文档为空时 `mbc doctor` 和打包会拒绝通过；标题名称和排版不影响加载。双语内容由主办方审查，旧版 v1 ZIP 继续兼容。
 
 **安全提醒**：游戏插件中的 `game.py` 及所有 C++ bot 都是会在你的电脑上实际运行的代码，**引擎不是安全沙箱**；只运行自己信任的代码或使用隔离容器。网站导入器只读取数据，不执行任何游戏代码。每届 viewer 会被沙箱化，必须支持 `postMessage` 接收 replay 数据。
 

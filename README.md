@@ -87,7 +87,7 @@ The website stores the results, rules, source snapshots and every replay in its 
 - Official standings: each pair plays every seed in both positions. Win 1 point / draw 0.5 / loss 0; ties use score difference then total score. For N bots and S seeds there are N(N−1)S games.
 - Source files are snapshotted during the tournament; hashes, seeds, results and all replay JSONs go into the database import ZIP.
 - The engine does **not** automatically highlight matches or write a static website. The organiser selects video clips manually from the website's complete match archive.
-- New season `format_version: 2` packages require three bilingual documents; they are in the **single shared season ZIP** and the post-tournament database ZIP. Legacy v1 packages remain playable.
+- New season `format_version: 2` packages require three bilingual documents; they are in the **single shared season ZIP** and the post-tournament database ZIP. The loader checks document presence and non-empty content, not exact Markdown headings; organisers review bilingual completeness. Legacy v1 packages remain playable.
 - This launcher is **not a security sandbox**. Only execute trusted C++ and Python code, or use an isolated VM/container.
 
 ## Tests

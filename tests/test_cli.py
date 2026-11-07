@@ -112,15 +112,40 @@ class CLIWorkflow(unittest.TestCase):
                     cli.main(['finals', '--season', str(season),
                               '--bots-dir', str(bots), '--out', str(root / 'out')])
 
-    def test_v2_rejects_missing_document_or_language(self):
+    def test_v2_rejects_missing_document(self):
         with tempfile.TemporaryDirectory() as d:
             folder = make_fixture(Path(d))
             (folder / 'AI_PROMPT.md').unlink()
             with self.assertRaisesRegex(SeasonError, 'Missing season file'):
                 resolve_season(folder)
-            (folder / 'AI_PROMPT.md').write_text('## English\\nOnly English.\\n', encoding='utf-8')
-            with self.assertRaisesRegex(SeasonError, 'must have'):
-                resolve_season(folder)
+
+    def test_v2_accepts_document_layouts_without_exact_language_headings(self):
+        layouts = (
+            '# API / 接口\n中文说明。\nEnglish instructions.\n',
+            '### 中文说明\n测试。\n### English guide\nTest.\n',
+            '## English\nImplement tick().\n',
+        )
+        for text in layouts:
+            with self.subTest(text=text), tempfile.TemporaryDirectory() as d:
+                folder = make_fixture(Path(d))
+                for name in ('RULES.md', 'INTERFACE.md', 'AI_PROMPT.md'):
+                    (folder / name).write_text(text, encoding='utf-8')
+                self.assertEqual(resolve_season(folder).id, 'synthetic_test')
+                plugin = Path(d) / 'season.zip'
+                with open_season(folder) as info:
+                    season_package(info, plugin)
+                with open_season(plugin) as info:
+                    for name in ('rules', 'interface', 'ai_prompt'):
+                        self.assertEqual(getattr(info, name).read_text(encoding='utf-8'), text)
+
+    def test_v2_rejects_empty_documents(self):
+        for name in ('RULES.md', 'INTERFACE.md', 'AI_PROMPT.md'):
+            for text in ('', ' \n\t'):
+                with self.subTest(name=name, text=text), tempfile.TemporaryDirectory() as d:
+                    folder = make_fixture(Path(d))
+                    (folder / name).write_text(text, encoding='utf-8')
+                    with self.assertRaisesRegex(SeasonError, name + ' must not be empty'):
+                        resolve_season(folder)
 
     def test_v1_legacy_zip_still_supported(self):
         with tempfile.TemporaryDirectory() as d:

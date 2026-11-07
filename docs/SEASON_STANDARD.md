@@ -32,7 +32,7 @@ This is the **permanent contract for NEW seasons**. It is not a game or a bot.
 
 ### 写文档的原则
 
-- 三个 Markdown 文件都必须有 **`## 中文` 和 `## English`** 两部分；**两版信息完全一致**，不能中文少规则、英文多提示。
+- 新包作者应提供 **`## 中文` 和 `## English`** 两部分；**两版信息完全一致**，不能中文少规则、英文多提示。引擎只检查三份文档存在且非空，不会因为标题层级、名称或排版不同阻止加载、对战及打包；翻译完整性须由主办方审查。
 - **简单、好读、略搞笑**。先一句话说清游戏目的，再说地图/角色、每回合能干啥、胜负/得分、边界规则。接口文档写清 `tick()`、结构体字段、动作 API、编译测试命令和一个*不带策略*的小例子。
 - 规则文档尽量**一两屏读完**。没必要写论文、实现细节和算法课；但影响胜负的规则、异常行为及平局判定**一个都别漏**。复杂点放简短表格或 FAQ。
 - 幽默可以点缀句子，**不能用笑话代替确定性规则**。术语、坐标、单位、先后顺序、数据范围必须无歧义。
@@ -69,7 +69,7 @@ Add `"format_version": 2`, `"interface": "INTERFACE.md"` and `"ai_prompt": "AI_P
 
 ### How to write the docs
 
-- All three Markdown files must contain **`## 中文` and `## English`** sections with **equivalent information**.
+- New package authors should provide **`## 中文` and `## English`** sections with **equivalent information**. The engine requires all three documents to exist and be non-empty; heading levels, names and layout do not block loading, matches or packaging. Organisers must review translation completeness.
 - Be **short, readable and a little funny**. Start with the goal, then roles/map, valid actions per turn, scoring/winning and key edge cases. The API guide should explain `tick()`, every relevant state field, action calls, build/test commands and a tiny **strategy-free** example.
 - Aim for **one or two screens** of rules. Do not write a thesis or an algorithms tutorial. Do not omit any rule that could change a match outcome; put technical edge cases in a small table or FAQ.
 - Jokes are welcome; ambiguous coordinates, units, action ordering and tie-breaking are not.
