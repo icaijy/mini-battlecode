@@ -1,8 +1,5 @@
-name: Test mini-battlecode
-on:
-  push:
-  pull_request:
-
+name: Test generic Mini Battlecode engine
+on: [push, pull_request]
 jobs:
   smoke:
     runs-on: ubuntu-latest
@@ -11,15 +8,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Check compiler
+      - name: Check dependencies
         run: g++ --version
-      - name: Regression tests
+      - name: Engine regression tests (synthetic temporary plugin)
         run: python3 -m unittest discover -s tests -v
-      - name: Install CLI in Linux home
+      - name: Install CLI
         run: ./install.sh
-      - name: Verify CLI in another directory
-        run: |
-          cd /tmp
-          "$HOME/.local/bin/mbc" doctor --season courier_s1
-      - name: Verify contestant kit
-        run: $HOME/.local/bin/mbc kit --season courier_s1 --out /tmp/courier_s1.zip
+      - name: Check CLI from outside repository
+        run: cd /tmp && "$HOME/.local/bin/mbc" doctor

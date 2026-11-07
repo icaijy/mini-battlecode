@@ -5,6 +5,10 @@ WARNING: trusted local bot binaries only. This is NOT an OS security sandbox.
 from __future__ import annotations
 
 import hashlib
+import contextlib
+import stat
+import tempfile
+import zipfile
 import importlib.util
 import json
 import os
@@ -49,7 +53,7 @@ class SeasonInfo:
 def resolve_season(value: str | Path) -> SeasonInfo:
     path = Path(value)
     if not path.is_dir():
-        path = ROOT / "seasons" / str(value)
+        raise SeasonError(f"Season directory not found: {path}; provide an external folder or ZIP")
     path = path.resolve()
     manifest = path / "manifest.json"
     if not manifest.is_file():
@@ -68,6 +72,40 @@ def resolve_season(value: str | Path) -> SeasonInfo:
             raise SeasonError(f"Missing season file {candidate}")
         files[key] = candidate
     return SeasonInfo(path, meta, **files)
+
+
+@contextlib.contextmanager
+def open_season(value: str | Path):
+    """Open an external season directory or safe, temporary, standalone ZIP.
+
+    The generic engine repository never stores a game's rules or files.
+    Python judge plugins are executable code, so only use trusted packages.
+    """
+    path = Path(value).expanduser().resolve()
+    if path.is_dir():
+        yield resolve_season(path)
+        return
+    if not path.is_file() or path.suffix.lower() != ".zip":
+        raise SeasonError(f"Provide an existing season directory or .zip file: {path}")
+    with tempfile.TemporaryDirectory(prefix="mbc-season-") as temp:
+        root = Path(temp).resolve()
+        with zipfile.ZipFile(path) as z:
+            items = [x for x in z.infolist() if not x.is_dir()]
+            if len(items) > 40 or sum(x.file_size for x in items) > 25 * 1024 * 1024:
+                raise SeasonError("Season ZIP exceeds file/size limit")
+            for entry in z.infolist():
+                target = root / entry.filename
+                if (entry.filename.startswith("/") or "\\" in entry.filename or
+                    not target.resolve().is_relative_to(root) or
+                    stat.S_ISLNK((entry.external_attr >> 16) & 0xFFFF) or
+                    entry.file_size > 8 * 1024 * 1024):
+                    raise SeasonError("Unsafe file in season ZIP")
+            z.extractall(root)
+        candidates = [root] if (root / "manifest.json").is_file() else [
+            folder for folder in root.iterdir() if folder.is_dir() and (folder / "manifest.json").is_file()]
+        if len(candidates) != 1:
+            raise SeasonError("Season ZIP must contain exactly one manifest.json")
+        yield resolve_season(candidates[0])
 
 
 def create_game(info: SeasonInfo, seed: int):

@@ -3,7 +3,9 @@ __pycache__/
 .build/
 results/
 published/
-bots/*.exe
-bots/*.out
-.DS_Store
+seasons/
+games/
+bots/
 kits/
+*.zip
+.DS_Store
