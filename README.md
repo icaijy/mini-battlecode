@@ -1,6 +1,6 @@
 # Mini Battlecode — generic engine only
 
-[中文文档](README.zh-CN.md) · [Season plugin contract (English)](docs/SEASON_PROMPT_EN.md)
+[中文文档](README.zh-CN.md) · [Bilingual season standard](docs/SEASON_STANDARD.md) · [Game designer brief](docs/SEASON_PROMPT_EN.md) · [Identical AI contestant prompt](docs/AI_PROMPT_TEMPLATE.md)
 
 **The repository contains no concrete seasons, game rules, participant bots, replays or tournament results.** External, self-contained game ZIPs supply all season-specific code. The final results ZIP is imported into the **`icaijy.com` Django database**, not published as static pages by this engine.
 
@@ -20,7 +20,7 @@ The launcher is installed in `~/.local/bin/mbc`. Add this directory to PATH if n
 
 ## Per-season workflow
 
-1. Ask a **game-designer AI** to create an external directory containing `manifest.json`, `game.py`, `arena.hpp`, `grader.cpp`, `viewer.html`, `RULES.md`, `example_bot.cpp`. See [the season contract](docs/SEASON_PROMPT_EN.md). Never commit these to this engine repository.
+1. Ask a **game-designer AI** to create an external season (never in this engine repo). The new `manifest.json` uses **`format_version: 2`**. Alongside `game.py`, `arena.hpp`, `grader.cpp`, `viewer.html` and `example_bot.cpp`, it **must** contain three short Markdown documents: bilingual `RULES.md` (game rules), `INTERFACE.md` (C++ API quick-start), and `AI_PROMPT.md` (same neutral instructions for every competing AI). Both languages use the headings `## 中文` and `## English` and convey equivalent information. Aim for readable, slightly funny wording—not a dissertation. See [the permanent standard](docs/SEASON_STANDARD.md) and [the game-designer brief](docs/SEASON_PROMPT_EN.md).
 2. Validate and package the organiser-only game:
 
 ```bash
@@ -28,7 +28,7 @@ mbc doctor --season ~/games/s1
 mbc pack-season --season ~/games/s1 --out ~/games/s1.zip
 ```
 
-3. Generate an identical public contestant ZIP for each participant (including the same publicly inspectable `game.py` judge and manifest for local tests):
+3. Generate an identical public contestant ZIP for each participant (including the same publicly inspectable `game.py` judge and all three bilingual docs). **Send every AI the exact same ZIP and `AI_PROMPT.md`, preferably copied verbatim from [the standard template](docs/AI_PROMPT_TEMPLATE.md)**; no model-specific strategy hints:
 
 ```bash
 mbc kit --season ~/games/s1.zip --out ~/games/s1_players.zip
@@ -67,6 +67,7 @@ The website stores records **in the database** and exposes them at `/battlecode/
 - Official standings: each pair plays every seed in both positions. Win 1 point / draw 0.5 / loss 0; ties use score difference then total score. For N bots and S seeds there are N(N−1)S games.
 - Source files are snapshotted during the tournament; hashes, seeds, results and all replay JSONs go into the database import ZIP.
 - The engine does **not** automatically highlight matches or write a static website. The organiser selects video clips manually from the website's complete match archive.
+- New season `format_version: 2` packages require the three bilingual documents and include them in the full ZIP, contestant ZIP and final database ZIP. Legacy v1 packages remain playable.
 - This launcher is **not a security sandbox**. Only execute trusted C++ and Python code, or use an isolated VM/container.
 
 ## Tests
