@@ -1,0 +1,8 @@
+{
+  "season": "courier_s1",
+  "seed_count": 4,
+  "bots": [
+    {"id": "human", "label": "Human (example)", "kind": "human", "source": "../seasons/courier_s1/example_bot.cpp"},
+    {"id": "bot_a", "label": "AI example", "kind": "ai", "source": "../seasons/courier_s1/example_bot.cpp"}
+  ]
+}

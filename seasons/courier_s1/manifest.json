@@ -1,0 +1,13 @@
+{
+  "id": "courier_s1",
+  "title": "Courier Clash · Season 1",
+  "version": "1.0.0",
+  "description": "Four bots per side, deliver resources, dodge collisions.",
+  "judge": "game.py",
+  "header": "arena.hpp",
+  "adapter": "grader.cpp",
+  "viewer": "viewer.html",
+  "example": "example_bot.cpp",
+  "rules": "RULES.md",
+  "default_seeds": 12
+}

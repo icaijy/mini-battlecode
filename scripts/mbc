@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Stable launcher: works from any working directory after install.sh symlinks it.
+set -euo pipefail
+ROOT="$(dirname "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")")"
+export PYTHONPATH="$ROOT${PYTHONPATH:+:$PYTHONPATH}"
+exec python3 -m arena "$@"
