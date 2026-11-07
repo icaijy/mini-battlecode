@@ -14,7 +14,7 @@ Deliver every file below:
 - `example_bot.cpp`: minimal valid API example **without competitive strategy**.
 - `RULES.md`: **中文 + English**, a clear, short game explanation: goal, turn order, actions, scoring/win conditions and relevant edge cases. Aim for one or two screens, with light humour but zero ambiguity.
 - `INTERFACE.md`: **中文 + English**, short `tick()`/state/action API guide including field meanings and a tiny build/test example. Not an API dissertation.
-- `AI_PROMPT.md`: **中文 + English**, one **identical neutral contestant prompt** for every AI. It should request one C++17 source file, permit identical public kit/tests, set AI coding time to 10 minutes (human 45 minutes), forbid looking at other bots, and freeze code at the deadline. **No strategy hints, model-specific instructions or secret seeds.** All three Markdown files must contain `## 中文` and `## English` with equivalent content.
+- `AI_PROMPT.md`: **中文 + English**, one **identical neutral contestant prompt** for every AI. Prefer copying [the standard template](AI_PROMPT_TEMPLATE.md) verbatim. It should request one C++17 source file, permit identical public kit/tests, set AI coding time to 10 minutes (human 45 minutes), forbid looking at other bots, and freeze code at the deadline. **No strategy hints, model-specific instructions or secret seeds.** All three Markdown files must contain `## 中文` and `## English` with equivalent content.
 
 Design simple rules and meaningful heuristic trade-offs. A basic bot should be achievable in the contest's time limits without pre-existing niche knowledge. Keep all consequential rules precise and testable, and the prose approachable.
 
