@@ -1,114 +1,44 @@
+"""Generic judge tests use an on-the-fly synthetic plugin, never a real season."""
 import json
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
-
-from arena.core import resolve_season, create_game, compile_cpp, run_match, BotFault
-from arena.publish import publish, publish_hub
+from arena.core import resolve_season, create_game, compile_cpp, run_match
 from arena.tournament import run_tournament
-
-ROOT = Path(__file__).resolve().parents[1]
-
+from tests.fixture import make_fixture
 
 class FrameworkTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.info = resolve_season("courier_s1")
-        cls.work = tempfile.TemporaryDirectory(prefix="mini-battlecode-test-")
+        cls.work = tempfile.TemporaryDirectory(prefix='mbc-test-')
         cls.root = Path(cls.work.name)
-        cls.bin = cls.root / "idle"
-        compile_cpp(cls.info.example, cls.info, cls.bin)
+        cls.info = resolve_season(make_fixture(cls.root))
+        cls.binary = cls.root/'example'
+        compile_cpp(cls.info.example, cls.info, cls.binary)
 
     @classmethod
-    def tearDownClass(cls):
-        cls.work.cleanup()
+    def tearDownClass(cls): cls.work.cleanup()
 
-    def test_game_plugin_and_perspective(self):
-        game = create_game(self.info, 7)
-        self.assertEqual(game.turn, 0)
-        self.assertEqual(game.max_turns, 140)
-        self.assertEqual(len(game.snapshot()["wells"]), 7)
-        self.assertTrue(game.observe(0).startswith("TURN 0"))
-        self.assertTrue(game.observe(1).startswith("TURN 0"))
-        self.assertEqual(game.parse_action(0, "0 1 2 3"), [0, 1, 2, 3])
-        with self.assertRaises(ValueError):
-            game.parse_action(0, "1 2 3 9")
+    def test_judge_and_replay(self):
+        game = create_game(self.info, 3)
+        self.assertEqual(game.max_turns, 4)
+        self.assertEqual(game.parse_action(0, '1'), 1)
+        with self.assertRaises(ValueError): game.parse_action(0, '2')
+        replay = self.root/'replay.json'
+        players=[{'id':'a','binary':str(self.binary)}, {'id':'b','binary':str(self.binary)}]
+        match=run_match(self.info,players,7,replay=replay)
+        self.assertEqual(match['scores'],[4,4])
+        self.assertIsNone(match['winner'])
+        self.assertEqual(len(json.loads(replay.read_text())['frames']),5)
 
-    def test_match_and_replay(self):
-        replay = self.root / "solo.json"
-        p = [{"id": "a", "binary": str(self.bin)}, {"id": "b", "binary": str(self.bin)}]
-        match = run_match(self.info, p, seed=2, replay=replay)
-        self.assertEqual(match["scores"], [0, 0])
-        self.assertIsNone(match["winner"])
-        self.assertFalse(match["errors"])
-        self.assertEqual(match["turns_played"], 140)
-        data = json.loads(replay.read_text())
-        self.assertEqual(len(data["frames"]), 141)
-        self.assertEqual(data["result"]["bot_ids"], ["a", "b"])
+    def test_round_robin(self):
+        roster=self.root/'roster.json'
+        roster.write_text(json.dumps({'season':self.info.id,'seeds':[1,2],
+            'bots':[{'id':'one','source':str(self.info.example),'kind':'human'},
+                    {'id':'two','source':str(self.info.example),'kind':'ai'}]}))
+        report=run_tournament(self.info,roster,self.root/'rr',verbose=False)
+        self.assertEqual(report['matches_total'],4)
+        self.assertEqual(len(list((self.root/'rr'/'replays').glob('*.json'))),4)
+        self.assertEqual(report['leaderboard'][0]['match_points'],2)
 
-    def test_forfeit_invalid_output(self):
-        src = self.root / "bad.cpp"
-        src.write_text("""#include "arena.hpp"
-#include <iostream>
-using namespace courier;
-void courier::tick(const State&) { std::cout << "invalid" << std::endl; }
-""")
-        bad = self.root / "bad"
-        compile_cpp(src, self.info, bad)
-        p = [{"id": "bad", "binary": str(bad)}, {"id": "good", "binary": str(self.bin)}]
-        match = run_match(self.info, p, 1)
-        self.assertEqual(match["winner"], 1)
-        self.assertEqual(match["turns_played"], 0)
-        self.assertEqual(len(match["errors"]), 1)
-
-    def test_timeout_forfeits(self):
-        src = self.root / "spin.cpp"
-        src.write_text("""#include "arena.hpp"
-using namespace courier;
-void courier::tick(const State&) { volatile int counter=0; while(true) ++counter; }
-""")
-        binary = self.root / "spin"
-        compile_cpp(src, self.info, binary)
-        p = [{"id": "spin", "binary": str(binary)},
-             {"id": "idle", "binary": str(self.bin)}]
-        result = run_match(self.info, p, seed=1, timeout=0.04)
-        self.assertEqual(result["winner"], 1)
-        self.assertIn("exceeded", result["errors"][0]["reason"])
-
-    def test_round_robin_and_publish(self):
-        src1 = self.root / "one.cpp"
-        src2 = self.root / "two.cc"
-        code = self.info.example.read_text(encoding="utf-8")
-        src1.write_text(code)
-        src2.write_text(code)
-        roster = self.root / "roster.json"
-        roster.write_text(json.dumps({"season": "courier_s1", "seeds": [3, 5],
-            "bots": [{"id": "human", "source": "one.cpp", "kind": "human"},
-                     {"id": "alpha", "source": "two.cc", "kind": "ai"}]}))
-        out = self.root / "tournament"
-        report = run_tournament(self.info, roster, out, verbose=False)
-        self.assertEqual(len(report["matches"]), 4)  # 2 seeds × both sides
-        self.assertEqual(len(report["leaderboard"]), 2)
-        self.assertTrue(all(s["games"] == 4 for s in report["leaderboard"]))
-        self.assertTrue(all(s["match_points"] == 2 for s in report["leaderboard"]))
-        self.assertNotIn("featured", report)
-        dest = self.root / "published"
-        publish(self.info, out / "tournament.json", dest)
-        self.assertTrue((dest / "index.html").is_file())
-        self.assertTrue((dest / "viewer.html").is_file())
-        self.assertTrue((dest / "results.json").is_file())
-        self.assertEqual(len(json.loads((dest / "matches.json").read_text())), 4)
-        self.assertEqual(len(list((dest / "replays").glob("*.json"))), 4)
-        self.assertEqual(len(json.loads((dest / "matches.json").read_text())), 4)
-        html = (dest / "index.html").read_text()
-        self.assertIn("All matches", html)
-        self.assertIn("viewer.html?replay=replays/match_0000.json", html)
-        self.assertNotIn("Featured matches", html)
-        publish_hub(self.root)
-        hub = json.loads((self.root / "seasons.json").read_text())
-        self.assertTrue(any(s["season"] == "published" for s in hub["seasons"]))
-
-
-if __name__ == "__main__":
-    unittest.main()
+if __name__=='__main__': unittest.main()

@@ -1,19 +1,23 @@
-# Prompt for an AI creating a new Mini Battlecode season
+# Game designer contract for Mini Battlecode
 
-Design one new season plugin in `seasons/<season_id>/` for `icaijy/mini-battlecode`. Do not modify the shared competition engine.
+Build **one external season plugin**. Do not edit the reusable `arena/` implementation and do not commit game-specific code to the engine repository. Produce an external directory containing `manifest.json`, `game.py`, `arena.hpp`, `grader.cpp`, `viewer.html`, `RULES.md` (English/Chinese) and a strategy-free `example_bot.cpp`.
 
-Files required:
+Manifest fields: `id`, `title`, `version`, `judge`, `header`, `adapter`, `viewer`, `example`, `rules`, `default_seeds`. The source filenames should be the exact names above.
 
-- `manifest.json`: season name, version and filenames.
-- `game.py`: **authoritative Python judge**, with `create_game(seed)` returning an object exposing `max_turns`, `turn`, `observe(team)`, `parse_action(team,line)`, `step([a,b])`, `snapshot()` and `outcome()`.
-- `arena.hpp`: intuitive C++17 state/action/tick interface; contestants implement **only one `.cpp` or `.cc` file**.
-- `grader.cpp`: one-line, newline-terminated stdin observations to C++ `tick()` calls, one-line stdout actions. Terminate when input is `END`; keep debug output off stdout.
-- `viewer.html`: self-contained replay visualiser for that game, with a local JSON file picker and per-tick playback.
-- `RULES.md`: full, unambiguous bilingual Chinese/English rules.
-- `example_bot.cpp`: minimal valid demonstration, no strategically useful opponent bot.
+`game.py` must expose `create_game(seed)` returning an object with `max_turns`, `turn`, `observe(team)`, `parse_action(team,line)`, `step([a,b])`, `snapshot()`, `outcome()`. Observation and action are newline-terminated single-line UTF-8 messages. Invalid actions must throw `ValueError`. Snapshots are JSON-serialisable dictionaries. Outcome is `{"scores":[x,y],"winner":0|1|null}`. Gameplay must be deterministic for a fixed seed and should strive for side symmetry. The Python judge is authoritative.
 
-A suitable game is easy for an AI to implement a first bot in 10 minutes and a human in 45 minutes, yet offers strategic choices. The same seed must produce deterministic initial states and transitions. Prefer symmetric views for both players. Explain swap-side fairness.
+A competitor writes **exactly one C++17 `.cpp` / `.cc` file**, implementing the `tick()` function declared in `arena.hpp`. The season-specific `grader.cpp` implements `main()`, streams observations to `tick()` and prints the move to stdout; it exits on `END` and reserves stderr for debugging.
 
-The observation and action are each **one newline-terminated UTF-8 line**. Validate illegal actions with `ValueError` from `parse_action()`. `snapshot()` must be JSON serialisable, and `outcome()` must return `{ "scores": [number,number], "winner": 0|1|null }`. C++ adapter must not award points; the Python judge is authoritative.
+**Viewer contract (mandatory for database-backed website):** the website embeds this standalone HTML in a sandboxed iframe and sends the replay with `postMessage`. Listen for:
 
-Do not edit `arena/core.py`, `arena/tournament.py`, or `arena/publish.py`. Smoke test via `mbc doctor --season <season_id>` and `mbc duel --season <season_id> --blue ... --red ...`. Freeze rules before development starts; do not disclose tournament seeds in advance.
+```javascript
+window.addEventListener('message', (event) => {
+  if (event.data?.type === 'mini-battlecode-replay') {
+    loadReplay(event.data.replay);
+  }
+});
+```
+
+The viewer must support a local JSON file picker, be fully self-contained (no CDN/HTTP fetch), and allow playback/seek. Replays have `{game, version, result, frames}`.
+
+Aim for very simple rules but non-trivial heuristic strategy (AI development 10 minutes, human 45 minutes). Include a minimal valid bot only, not a tuned strategy. Do not preselect final seeds. Verify with `mbc doctor --season <path-or-zip>` and a smoke-test duel. Ship this plugin externally, not inside the generic engine repository.

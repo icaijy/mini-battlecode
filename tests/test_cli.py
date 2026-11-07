@@ -1,50 +1,66 @@
-"""User-facing workflow smoke tests (no network required)."""
+"""External ZIP -> build -> duel -> paired finals -> database archive."""
+from __future__ import annotations
 import contextlib
 import io
 import json
 import tempfile
 import unittest
+import zipfile
 from pathlib import Path
 from unittest.mock import patch
 
 from arena import cli
+from arena.archive import contestant_kit, season_package
+from arena.core import open_season, SeasonError
+from tests.fixture import make_fixture
 
-ROOT = Path(__file__).resolve().parents[1]
+class CLIWorkflow(unittest.TestCase):
+    def test_doctor_without_game(self):
+        with contextlib.redirect_stdout(io.StringIO()) as buff:
+            cli.main(['doctor'])
+        self.assertIn('Ready.', buff.getvalue())
 
-
-class CLITest(unittest.TestCase):
-    def test_doctor(self):
-        with contextlib.redirect_stdout(io.StringIO()) as output:
-            cli.main(["doctor", "--season", "courier_s1"])
-        self.assertIn("Ready.", output.getvalue())
-
-    def test_new_season_draft(self):
-        with tempfile.TemporaryDirectory() as folder, patch.object(cli, "ROOT", Path(folder)):
+    def test_external_zip_and_final(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            folder = make_fixture(root)
+            plugin = root / 'season.zip'
+            with open_season(folder) as info:
+                season_package(info, plugin)
+            with open_season(plugin) as info:
+                self.assertEqual(info.id, 'synthetic_test')
+                kit = root / 'kit.zip'
+                contestant_kit(info, kit)
+                with zipfile.ZipFile(kit) as z:
+                    self.assertIn('arena.hpp', z.namelist())
+                    self.assertNotIn('game.py', z.namelist())
+            outfile = root / 'results'
+            archive = root / 'database.zip'
+            src = folder / 'example_bot.cpp'
             with contextlib.redirect_stdout(io.StringIO()):
-                cli.main(["new-season", "testing_season"])
-            draft = Path(folder) / "seasons" / "testing_season"
-            manifest = json.loads((draft / "manifest.json").read_text())
-            self.assertEqual(manifest["id"], "testing_season")
-            self.assertIn("DRAFT", manifest["title"])
-            self.assertTrue((draft / "game.py").exists())
-            self.assertTrue((draft / "viewer.html").exists())
+                cli.main(['finals','--season',str(plugin),
+                          '--bot',f'human={src}', '--bot',f'ai={src}',
+                          '--human','human', '--seed-count','2',
+                          '--out',str(outfile), '--archive',str(archive)])
+            result = json.loads((outfile/'tournament.json').read_text())
+            self.assertEqual(result['matches_total'], 4)
+            with zipfile.ZipFile(archive) as z:
+                names = z.namelist()
+                self.assertIn('tournament.json', names)
+                self.assertIn('season/game.py', names)
+                self.assertIn('season/viewer.html', names)
+                self.assertIn('sources/human.cpp', names)
+                self.assertEqual(len([n for n in names if n.startswith('replays/')]), 4)
+                self.assertEqual(json.loads(z.read('tournament.json'))['season'], 'synthetic_test')
 
-    def test_finals_full_workflow(self):
-        src = ROOT / "seasons" / "courier_s1" / "example_bot.cpp"
-        with tempfile.TemporaryDirectory() as folder:
-            result = Path(folder) / "results"
-            published = Path(folder) / "site"
-            with contextlib.redirect_stdout(io.StringIO()):
-                cli.main(["finals", "--season", "courier_s1",
-                          "--bot", f"human={src}", "--bot", f"ai={src}",
-                          "--human", "human", "--seed-count", "2",
-                          "--out", str(result), "--site-root", str(published)])
-            payload = json.loads((result / "tournament.json").read_text())
-            self.assertEqual(payload["matches_total"], 4)
-            self.assertTrue((published / "index.html").is_file())
-            self.assertTrue((published / "courier_s1" / "viewer.html").is_file())
-            self.assertTrue((published / "courier_s1" / "matches.json").is_file())
+    def test_traversal_zip_rejected(self):
+        with tempfile.TemporaryDirectory() as d:
+            path=Path(d)/'evil.zip'
+            with zipfile.ZipFile(path,'w') as z:
+                z.writestr('../../tmp/escape','x')
+            with self.assertRaises(SeasonError):
+                with open_season(path):
+                    pass
 
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     unittest.main()
