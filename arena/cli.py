@@ -83,7 +83,7 @@ def finals(info, args):
                         not src.is_file() or src.suffix.lower() not in ('.cpp', '.cc')):
                         raise ValueError(f"Bad or duplicate bot: {spec}")
                     seen.add(key)
-                    roster_bots.append({"id": key, "label": Path(filename).name,
+                    roster_bots.append({"id": key, "label": key,
                                         "source": str(src),
                                         "kind": "human" if key == args.human else "participant"})
                 if args.human and args.human not in seen:
