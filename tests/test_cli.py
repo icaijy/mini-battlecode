@@ -11,7 +11,7 @@ from unittest.mock import patch
 
 from arena import cli
 from arena.archive import contestant_kit, season_package
-from arena.core import open_season, SeasonError
+from arena.core import open_season, SeasonError, resolve_season
 from tests.fixture import make_fixture
 
 class CLIWorkflow(unittest.TestCase):
@@ -27,6 +27,9 @@ class CLIWorkflow(unittest.TestCase):
             plugin = root / 'season.zip'
             with open_season(folder) as info:
                 season_package(info, plugin)
+            with zipfile.ZipFile(plugin) as z:
+                for name in ('RULES.md', 'INTERFACE.md', 'AI_PROMPT.md'):
+                    self.assertIn(name, z.namelist())
             with open_season(plugin) as info:
                 self.assertEqual(info.id, 'synthetic_test')
                 kit = root / 'kit.zip'
@@ -35,6 +38,10 @@ class CLIWorkflow(unittest.TestCase):
                     self.assertIn('arena.hpp', z.namelist())
                     self.assertIn('game.py', z.namelist())
                     self.assertIn('manifest.json', z.namelist())
+                    for name in ('RULES.md', 'INTERFACE.md', 'AI_PROMPT.md'):
+                        self.assertIn(name, z.namelist())
+                        self.assertIn('## 中文', z.read(name).decode('utf-8'))
+                        self.assertIn('## English', z.read(name).decode('utf-8'))
             outfile = root / 'results'
             archive = root / 'database.zip'
             src = folder / 'example_bot.cpp'
@@ -50,9 +57,37 @@ class CLIWorkflow(unittest.TestCase):
                 self.assertIn('tournament.json', names)
                 self.assertIn('season/game.py', names)
                 self.assertIn('season/viewer.html', names)
+                for name in ('RULES.md', 'INTERFACE.md', 'AI_PROMPT.md'):
+                    self.assertIn('season/' + name, names)
                 self.assertIn('sources/human.cpp', names)
                 self.assertEqual(len([n for n in names if n.startswith('replays/')]), 4)
                 self.assertEqual(json.loads(z.read('tournament.json'))['season'], 'synthetic_test')
+
+    def test_v2_rejects_missing_document_or_language(self):
+        with tempfile.TemporaryDirectory() as d:
+            folder = make_fixture(Path(d))
+            (folder / 'AI_PROMPT.md').unlink()
+            with self.assertRaisesRegex(SeasonError, 'Missing season file'):
+                resolve_season(folder)
+            (folder / 'AI_PROMPT.md').write_text('## English\\nOnly English.\\n', encoding='utf-8')
+            with self.assertRaisesRegex(SeasonError, 'must have'):
+                resolve_season(folder)
+
+    def test_v1_legacy_zip_still_supported(self):
+        with tempfile.TemporaryDirectory() as d:
+            folder = make_fixture(Path(d))
+            manifest_path = folder / 'manifest.json'
+            manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
+            for name in ('format_version', 'interface', 'ai_prompt'):
+                manifest.pop(name)
+            manifest_path.write_text(json.dumps(manifest), encoding='utf-8')
+            with open_season(folder) as info:
+                self.assertIsNone(info.interface)
+                self.assertIsNone(info.ai_prompt)
+                old = Path(d) / 'legacy.zip'
+                season_package(info, old)
+            with open_season(old) as info:
+                self.assertEqual(info.id, 'synthetic_test')
 
     def test_traversal_zip_rejected(self):
         with tempfile.TemporaryDirectory() as d:
