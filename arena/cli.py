@@ -33,43 +33,80 @@ def doctor(info=None):
 def finals(info, args):
     if args.timeout <= 0:
         raise ValueError("Timeout must be positive")
-    if bool(args.roster) == bool(args.bot):
-        raise ValueError("Provide exactly one of --roster or repeated --bot id=path")
+    modes = sum(bool(value) for value in (args.bots_dir, args.roster, args.bot))
+    if modes != 1:
+        raise ValueError("Use exactly one of --bots-dir, --roster, or --bot")
     if args.roster and (args.seed_count is not None or args.seed_master is not None or args.human):
         raise ValueError("When using --roster put seeds and kinds in roster JSON")
+
     tag = datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')
     out = Path(args.out or f"results/{info.id}/{tag}").resolve()
     if (out / 'tournament.json').exists():
         raise FileExistsError("Tournament output already exists")
+
     with tempfile.TemporaryDirectory(prefix="mbc-roster-") as temp:
         if args.roster:
-            roster = Path(args.roster).resolve()
+            roster = Path(args.roster).expanduser().resolve()
         else:
-            if len(args.bot) < 2:
-                raise ValueError("At least two --bot arguments required")
-            roster_bots, seen = [], set()
-            for spec in args.bot:
-                key, sep, filename = spec.partition('=')
-                src = Path(filename).resolve()
-                if (not sep or not SAFE_ID.fullmatch(key) or key in seen or
-                    not src.is_file() or src.suffix not in ('.cpp', '.cc')):
-                    raise ValueError(f"Bad or duplicate bot: {spec}")
-                seen.add(key)
-                roster_bots.append({"id": key, "source": str(src),
-                                    "kind": "human" if key == args.human else "ai"})
-            if args.human and args.human not in seen:
-                raise ValueError("Unknown human bot id")
+            roster_bots = []
+            if args.bots_dir:
+                directory = Path(args.bots_dir).expanduser().resolve()
+                if not directory.is_dir():
+                    raise ValueError(f"Bot folder not found: {directory}")
+                sources = sorted((p for p in directory.iterdir()
+                                  if p.is_file() and p.suffix.lower() in ('.cpp', '.cc')),
+                                 key=lambda p: (p.name.lower(), p.name))
+                if len(sources) < 2:
+                    raise ValueError("Bot folder must contain at least two .cpp/.cc files")
+                # Internal IDs are independent from filenames: even foo.cc/foo.cpp
+                # are separate participants, and filenames remain visible in results.
+                human_matches = 0
+                for index, source in enumerate(sources):
+                    human = args.human in (source.name, source.stem) if args.human else False
+                    human_matches += int(human)
+                    roster_bots.append({
+                        "id": f"bot_{index + 1:03d}",
+                        "label": source.name,
+                        "source": str(source),
+                        "kind": "human" if human else "participant",
+                    })
+                if args.human and human_matches != 1:
+                    raise ValueError("--human must identify exactly one bot filename or stem")
+            else:
+                if len(args.bot) < 2:
+                    raise ValueError("At least two --bot arguments required")
+                seen = set()
+                for spec in args.bot:
+                    key, sep, filename = spec.partition('=')
+                    src = Path(filename).expanduser().resolve()
+                    if (not sep or not SAFE_ID.fullmatch(key) or key in seen or
+                        not src.is_file() or src.suffix.lower() not in ('.cpp', '.cc')):
+                        raise ValueError(f"Bad or duplicate bot: {spec}")
+                    seen.add(key)
+                    roster_bots.append({"id": key, "label": key,
+                                        "source": str(src),
+                                        "kind": "human" if key == args.human else "participant"})
+                if args.human and args.human not in seen:
+                    raise ValueError("Unknown human bot id")
             payload = {"season": info.id, "bots": roster_bots,
                        "seed_count": args.seed_count or info.meta.get('default_seeds', 8)}
             if args.seed_master is not None:
                 payload['seed_master'] = args.seed_master
             roster = Path(temp) / 'roster.json'
             roster.write_text(json.dumps(payload), encoding='utf-8')
-        result = run_tournament(info, roster, out, timeout=args.timeout)
+        # Folder mode keeps terminal output brief; full details still go to JSON.
+        result = run_tournament(info, roster, out, timeout=args.timeout,
+                                verbose=not bool(args.bots_dir))
+
+    if args.bots_dir:
+        print(f"\nFinals: {result['matches_total']} games, {result['bot_count']} bots")
+        print("Filename                         Wins  Draws  Losses")
+        for player in result['leaderboard']:
+            print(f"{player['label']:<32} {player['wins']:>4}  "
+                  f"{player['draws']:>5}  {player['losses']:>6}")
     archive = Path(args.archive).resolve() if args.archive else out / 'database_import.zip'
     export_archive(info, out / 'tournament.json', archive)
     print('Database import ZIP:', archive)
-    print('Import on icaijy.com using: python manage.py import_battlecode', archive)
     return result
 
 
@@ -100,6 +137,8 @@ def main(argv=None):
             q.add_argument('--timeout', type=float, default=0.5)
             q.add_argument('--replay')
         elif cmd == 'finals':
+            q.add_argument('--bots-dir', metavar='FOLDER',
+                           help='auto-discover all .cpp/.cc files; show wins by filename')
             q.add_argument('--bot', action='append', metavar='ID=FILE')
             q.add_argument('--roster')
             q.add_argument('--human')

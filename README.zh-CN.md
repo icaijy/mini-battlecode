@@ -54,19 +54,27 @@ mbc duel --season ~/mbc-games/season_1.zip \
   --seed 7 --replay ~/mbc-games/test.json
 ```
 
-5. 正式决赛：同一 ZIP 加上每人的单文件 bot。系统做双边循环赛，保存**所有 replay**，不自动挑精彩对局：
+5. **正式决赛（默认方式）**：把参赛代码直接放进一个文件夹，例如 `~/mbc-games/bots/`：
+
+```text
+bots/
+  human.cpp
+  gpt.cpp
+  claude.cpp
+  gemini.cc
+```
+
+   一条命令自动找出这个目录**直接包含的所有 `.cpp/.cc` 文件**，全部编译并两两对战，最后按照**文件名**列出胜、平、负场次（终端不刷屏输出每一局）：
 
 ```bash
 mbc finals --season ~/mbc-games/season_1.zip \
-  --bot human=~/mbc-games/bots/human.cpp \
-  --bot gpt=~/mbc-games/bots/gpt.cpp \
-  --bot claude=~/mbc-games/bots/claude.cpp \
-  --bot gemini=~/mbc-games/bots/gemini.cpp \
-  --human human --seed-count 8 \
-  --out ~/mbc-games/results/season_1
+  --bots-dir ~/mbc-games/bots
 ```
 
-   **赛后**才生成 `database_import.zip`，这是存档用的数据文件，**不是第二份游戏 ZIP**。
+   可选 `--seed-count 8` 指定每对选手的地图种子数（每个种子互换双方位置各打一场）。默认使用这一届游戏包里设置的种子数。正式冠军依完整双边循环赛积分决定；所有 replay 保存到结果目录，不自动挑精彩对局。**目录中不要放测试用的 `example_bot.cpp`，否则它也会参赛。**
+
+   赛后输出每个人的文件名与胜/平/负场次，以及自动生成的 `database_import.zip`。这是存档数据文件，**不是第二份游戏 ZIP**。
+
 
 6. 把 `database_import.zip` 传到网站服务器，在完成部署和迁移的 `icaijy.com` 项目目录运行：
 
