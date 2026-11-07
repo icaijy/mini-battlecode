@@ -7,8 +7,8 @@ A small **standalone** competition engine. This repository is intentionally **no
 | Layer | Reused between seasons? | Responsibility |
 |---|---|---|
 | `arena/core.py` | Yes | Compile a single C++ source, launch subprocesses, enforce response timeouts, run the game, save replays |
-| `arena/tournament.py` | Yes | Frozen seeded paired round robin, official ranking, shortlist of interesting matches |
-| `arena/publish.py` | Yes | Export leaderboards and selected replays to a static microsite |
+| `arena/tournament.py` | Yes | Frozen seeded paired round robin, official ranking, every match replay |
+| `arena/publish.py` | Yes | Export leaderboards and all replays to a static microsite |
 | `seasons/SEASON/game.py` | **No** | Actual rules / state / observations / valid actions / scoring, authoritative Python judge |
 | `seasons/SEASON/arena.hpp` | **No** | Season-specific C++ API for bots |
 | `seasons/SEASON/grader.cpp` | **No** | Season-specific C++ wire adapter; not responsible for scoring |
@@ -33,7 +33,7 @@ python3 -m arena build --season courier_s1 --source seasons/courier_s1/example_b
 python3 -m arena match --season courier_s1 --blue .build/example --red .build/example --seed 7 --replay results/demo.json
 
 # Full paired round-robin tournament with source files from roster.json
-python3 -m arena tournament --season courier_s1 --roster bots/roster.example.json --out results/demo --features 8
+python3 -m arena tournament --season courier_s1 --roster bots/roster.example.json --out results/demo
 
 # Generate static results webpage; it does not deploy anywhere
 python3 -m arena publish --season courier_s1 --results results/demo/tournament.json --out published/courier_s1
@@ -43,7 +43,7 @@ python3 -m arena publish-hub --root published
 python3 -m arena kit --season courier_s1 --out kits/courier_s1.zip
 ```
 
-Open `published/index.html` for the multi-season archive and `published/courier_s1/index.html` for the standings; select a replay manually if opened as `file://`, or run `python3 -m http.server 8000 --directory published/courier_s1` to use featured replay links at `http://localhost:8000/`.
+Open `published/index.html` for the multi-season archive and `published/courier_s1/index.html` for the standings; select a replay manually if opened as `file://`, or run `python3 -m http.server 8000 --directory published/courier_s1` to use all-match replay links at `http://localhost:8000/`.
 
 ## How a tournament works
 
@@ -51,7 +51,7 @@ Every pair of bots competes on **the same seeded maps in both player positions**
 
 For `N` bots and `S` seeds per pair, **number of matches = N(N−1)S** (each unordered pair has two games per seed). Example: 6 bots × 12 seeds = 360 games. Do not choose seeds or change the rules after seeing opponents. `roster.json` can specify `seeds` explicitly, or choose `seed_count`. If no explicit `seed_master` is given, a fresh cryptographically random master is chosen at tournament launch, **after the bots have been submitted**, and the exact generated seed list is saved in `tournament.json` for reproducibility. Please freeze your own and AI bot source at the development deadline. The time limit refers to development, not to the total tournament runtime.
 
-**Video format:** `arena/tournament.py` selects representative matches *after* the competition — close games, surprise results, high combined scores, leaders head-to-head and some human matches. These labels affect **only the video selection**, never the champion. A top-four knockout can be a *showmatch*, not the official championship. This avoids the unfairness of a single-elimination bracket while retaining exciting footage.
+**Video format:** The organiser chooses which replays to include in the video. The engine never auto-selects or ranks entertaining matches. A top-four knockout can be a *showmatch*, not the official championship.
 
 ## Static website publishing
 
@@ -63,16 +63,16 @@ published/
   seasons.json    # machine-readable season index
   courier_s1/
   index.html      # official final leaderboard, shareable landing page
-  results.json    # machine-readable ranking and featured-match metadata
+  results.json    # machine-readable official ranking
   matches.json    # full match-level score/winner audit log
   viewer.html     # season-specific viewer, never a generic viewer
-  replays/        # only selected featured replays
+  replays/        # every match replay
   RULES.md
 ```
 
 Copy these **static files only** to a website or GitHub Pages; never copy the Python engine, bot executables or development tooling into the website. `icaijy.com` can later host or link to this output, but **this repository never writes to `icaijy.com`**.
 
-The full `results/demo/replays/` folder contains **all matches** for auditing and further video edits. It can be large; published microsites only include selected matches. For video, record the full event, display standings, show 2–5 annotated featured replays, then explain representative algorithmic decisions. Avoid presenting showmatch wins as the official title.
+The full `results/demo/replays/` folder and published season page both contain **all matches**. Open the **All matches & replays** table, watch any match and manually choose which ones to feature in your video. Hosting all replay JSONs increases the static export size. Avoid presenting showmatch wins as the official title.
 
 ## Fairness and security
 

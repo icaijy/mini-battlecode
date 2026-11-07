@@ -1,4 +1,4 @@
-"""Reproducible, fully paired round robin; curated matches are presentation only."""
+"""Reproducible, fully paired round robin; every game gets a replay."""
 from __future__ import annotations
 
 import itertools
@@ -95,49 +95,8 @@ def rank_players(players, matches):
     return leaderboard
 
 
-def pick_featured(matches, leaderboard, count):
-    """Editorial selection only: it NEVER changes the official ranking."""
-    if not matches or count < 1:
-        return []
-    ranking = {row["id"]: row["rank"] for row in leaderboard}
-    selected = {}
-
-    def add_sorted(category, score, slots, *, predicate=None):
-        candidates = sorted((m for m in matches if predicate is None or predicate(m)),
-                            key=lambda m: (score(m), -m["index"]), reverse=True)
-        for m in candidates:
-            if len(selected) >= count or slots <= 0:
-                break
-            if m["index"] not in selected:
-                selected[m["index"]] = category
-                slots -= 1
-
-    # Reserve at least one human-focused clip when a human participated.
-    # Video choices NEVER affect the official ranking.
-    if any("human" in m.get("kinds", []) for m in matches):
-        add_sorted("human_match", lambda m: (100000 if "human" in m.get("kinds", []) else -1e9)
-                   - abs(m["scores"][0] - m["scores"][1]), max(1, count // 4))
-    add_sorted("nail_biter", lambda m: -abs(m["scores"][0] - m["scores"][1]) if not m["errors"] else -1e9,
-               max(1, count // 3))
-    def is_surprise(m):
-        return (m["winner"] is not None and not m["errors"]
-                and ranking[m["bot_ids"][m["winner"]]] >
-                    ranking[m["bot_ids"][1 - m["winner"]]])
-    add_sorted("surprise", lambda m: ranking[m["bot_ids"][m["winner"]]] -
-               ranking[m["bot_ids"][1-m["winner"]]], max(1, count // 4),
-               predicate=is_surprise)
-    add_sorted("high_score", lambda m: sum(m["scores"]) if not m["errors"] else -1e9,
-               max(1, count // 4))
-    top_ids = {row["id"] for row in leaderboard[:2]}
-    add_sorted("leaders_duel", lambda m: int(set(m["bot_ids"]) == top_ids) * 100000 + sum(m["scores"]), 1)
-    add_sorted("human_match", lambda m: int("human" in m.get("kinds", [])) * 100000 + sum(m["scores"]), count)
-    return [{"match_index": i, "category": category,
-             "replay": matches[i].get("replay"), "bot_ids": matches[i]["bot_ids"]}
-            for i, category in sorted(selected.items())]
-
-
 def run_tournament(info: SeasonInfo, roster_path: str | Path, output: str | Path,
-                   *, timeout: float = 0.5, features: int = 8, verbose=True):
+                   *, timeout: float = 0.5, verbose=True):
     out = Path(output).resolve()
     out.mkdir(parents=True, exist_ok=True)
     bots, seeds = read_roster(roster_path, info)
@@ -160,7 +119,6 @@ def run_tournament(info: SeasonInfo, roster_path: str | Path, output: str | Path
                           f"{m['bot_ids'][0]} vs {m['bot_ids'][1]} "
                           f"{m['scores']} winner={m['winner']}", flush=True)
     leaderboard = rank_players(players, matches)
-    featured = pick_featured(matches, leaderboard, features)
     metadata = [{k: v for k, v in player.items() if k not in ("binary", "source")}
                 for player in players]
     report = {"schema": 1, "season": info.id, "title": info.meta["title"],
@@ -169,7 +127,7 @@ def run_tournament(info: SeasonInfo, roster_path: str | Path, output: str | Path
               "matches_total": len(matches), "bot_count": len(players),
               "participants": metadata,
               "judge_sha256": sha256(info.judge), "adapter_sha256": sha256(info.adapter),
-              "leaderboard": leaderboard, "matches": matches, "featured": featured}
+              "leaderboard": leaderboard, "matches": matches}
     (out / "tournament.json").write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n",
                                           encoding="utf-8")
     if verbose:
