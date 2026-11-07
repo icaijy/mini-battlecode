@@ -28,7 +28,7 @@ mbc doctor --season ~/games/s1
 mbc pack-season --season ~/games/s1 --out ~/games/s1.zip
 ```
 
-3. Generate an identical public contestant ZIP for each participant (excludes the private `game.py` judge):
+3. Generate an identical public contestant ZIP for each participant (including the same publicly inspectable `game.py` judge and manifest for local tests):
 
 ```bash
 mbc kit --season ~/games/s1.zip --out ~/games/s1_players.zip
